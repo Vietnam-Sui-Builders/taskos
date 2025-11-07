@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import {
     Dialog,
@@ -18,34 +20,37 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { IconCirclePlusFilled } from "@tabler/icons-react";
+import { TaskItem } from "@/types";
 
-interface AddTaskDialogProps {
-    onAddTask: (task: {
-        title: string;
-        description: string;
-        priority: "low" | "medium" | "high";
-        status: "todo" | "progress" | "done";
-    }) => void;
+interface CreateTaskProps {
+    onAddTask: (task: TaskItem) => void;
 }
 
-export const AddTaskDialog = ({ onAddTask }: AddTaskDialogProps) => {
-    const [open, setOpen] = useState(false);
+export const CreateTask = ({ onAddTask }: CreateTaskProps) => {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [priority, setPriority] = useState<"low" | "medium" | "high">(
-        "medium"
-    );
-    const [status, setStatus] = useState<"todo" | "progress" | "done">("todo");
+    const [dueDate, setDueDate] = useState("");
+    const [priority, setPriority] = useState("2"); // Default to Medium priority
+    const [isCreating, setIsCreating] = useState(false);
+    const [open, setOpen] = useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (title.trim()) {
-            onAddTask({ title, description, priority, status });
+            onAddTask({
+                id: new Date().toISOString(),
+                title,
+                description,
+                priority,
+                creator: "0xMOCK...CREATOR",
+                created_at: new Date().toISOString(),
+                due_date: new Date().toISOString(),
+                is_completed: false,
+            });
             setTitle("");
             setDescription("");
-            setPriority("medium");
-            setStatus("todo");
+            setPriority("2");
             setOpen(false);
         }
     };
@@ -53,9 +58,9 @@ export const AddTaskDialog = ({ onAddTask }: AddTaskDialogProps) => {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="lg" className="gap-2">
-                    <Plus className="w-5 h-5" />
-                    Quick Create
+                <Button size="lg" className="w-full h-full gap-2">
+                    <IconCirclePlusFilled />
+                    <span>Quick Create</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] bg-card border-border">
@@ -86,57 +91,45 @@ export const AddTaskDialog = ({ onAddTask }: AddTaskDialogProps) => {
                             id="description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Add task description..."
+                            placeholder="Enter task description..."
                             rows={3}
                             className="bg-background resize-none"
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between">
                         <div className="space-y-2">
-                            <Label htmlFor="priority">Priority</Label>
-                            <Select
-                                value={priority}
-                                onValueChange={(
-                                    value: "low" | "medium" | "high"
-                                ) => setPriority(value)}
-                            >
-                                <SelectTrigger
-                                    id="priority"
-                                    className="bg-background"
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="low">Low</SelectItem>
-                                    <SelectItem value="medium">
-                                        Medium
-                                    </SelectItem>
-                                    <SelectItem value="high">High</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Label htmlFor="due-date">
+                                Due Date (Optional)
+                            </Label>
+                            <Input
+                                id="due-date"
+                                type="datetime-local"
+                                value={dueDate}
+                                onChange={(e) => setDueDate(e.target.value)}
+                                disabled={isCreating}
+                            />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="status">Status</Label>
+                            <Label htmlFor="priority">Priority</Label>
                             <Select
-                                value={status}
-                                onValueChange={(
-                                    value: "todo" | "progress" | "done"
-                                ) => setStatus(value)}
+                                value={priority.toString()}
+                                onValueChange={(value: string) =>
+                                    setPriority(value)
+                                }
                             >
                                 <SelectTrigger
-                                    id="status"
-                                    className="bg-background"
+                                    id="priority"
+                                    className="bg-background min-w-40"
                                 >
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="todo">To Do</SelectItem>
-                                    <SelectItem value="progress">
-                                        In Progress
-                                    </SelectItem>
-                                    <SelectItem value="done">Done</SelectItem>
+                                    <SelectItem value="1">Low</SelectItem>
+                                    <SelectItem value="2">Medium</SelectItem>
+                                    <SelectItem value="3">High</SelectItem>
+                                    <SelectItem value="4">Critical</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -153,10 +146,15 @@ export const AddTaskDialog = ({ onAddTask }: AddTaskDialogProps) => {
                         </Button>
                         <Button
                             type="submit"
+                            disabled={
+                                !title.trim() ||
+                                !description.trim() ||
+                                isCreating
+                            }
                             variant="default"
                             className="flex-1"
                         >
-                            Create Task
+                            {isCreating ? "Creating..." : "Create Task"}
                         </Button>
                     </div>
                 </form>

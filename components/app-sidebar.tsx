@@ -33,7 +33,6 @@ import {
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { CustomBtn } from "./connect-button";
-import { AddTaskDialog } from "./create-task";
 
 const data = {
     user: {
