@@ -17,11 +17,7 @@ const { networkConfig } = createNetworkConfig({
 });
 const queryClient = new QueryClient();
 
-interface ProviderProps {
-  children: React.ReactNode;
-}
-
-const Provider = ({ children }: ProviderProps) => {
+function WalletProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
@@ -32,6 +28,6 @@ const Provider = ({ children }: ProviderProps) => {
       </SuiClientProvider>
     </QueryClientProvider>
   );
-};
+}
 
-export default Provider;
+export default WalletProviders;
