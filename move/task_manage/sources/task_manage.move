@@ -10,6 +10,7 @@ module task_manage::task_manage;
 
 use std::string::{Self, String};
 use sui::address;
+use sui::clock::{Self, Clock};
 use sui::dynamic_field as df;
 use sui::event;
 use sui::table::{Self, Table};
@@ -227,6 +228,7 @@ public fun create_task(
     priority: u8,
     category: vector<u8>,
     tags: vector<vector<u8>>,
+    clock: &Clock,
     ctx: &mut TxContext,
 ): Task {
     let task_title = string::utf8(title);
@@ -251,7 +253,7 @@ public fun create_task(
         i = i + 1;
     };
 
-    let current_time = tx_context::epoch(ctx);
+    let current_time = clock::timestamp_ms(clock);
 
     let task = Task {
         id: object::new(ctx),
@@ -286,6 +288,7 @@ public fun update_task_info(
     task: &mut Task,
     title: vector<u8>,
     description: vector<u8>,
+    clock: &Clock,
     ctx: &mut TxContext,
 ) {
     let sender = tx_context::sender(ctx);
@@ -299,7 +302,7 @@ public fun update_task_info(
 
     task.title = new_title;
     task.description = new_description;
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -308,13 +311,13 @@ public fun update_task_info(
 }
 
 /// Update task priority
-public fun update_priority(task: &mut Task, priority: u8, ctx: &mut TxContext) {
+public fun update_priority(task: &mut Task, priority: u8, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     validate_priority(priority);
 
     task.priority = priority;
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -323,12 +326,12 @@ public fun update_priority(task: &mut Task, priority: u8, ctx: &mut TxContext) {
 }
 
 /// Update task due date
-public fun update_due_date(task: &mut Task, due_date: u64, ctx: &mut TxContext) {
+public fun update_due_date(task: &mut Task, due_date: u64, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
     task.due_date = due_date;
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -337,13 +340,13 @@ public fun update_due_date(task: &mut Task, due_date: u64, ctx: &mut TxContext) 
 }
 
 /// Update task status
-public fun update_status(task: &mut Task, status: u8, ctx: &mut TxContext) {
+public fun update_status(task: &mut Task, status: u8, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     validate_status(status);
 
     task.status = status;
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -352,7 +355,12 @@ public fun update_status(task: &mut Task, status: u8, ctx: &mut TxContext) {
 }
 
 /// Update task category
-public fun update_category(task: &mut Task, category: vector<u8>, ctx: &mut TxContext) {
+public fun update_category(
+    task: &mut Task,
+    category: vector<u8>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -360,7 +368,7 @@ public fun update_category(task: &mut Task, category: vector<u8>, ctx: &mut TxCo
     validate_string_length(&new_category, MAX_CATEGORY_LENGTH, ECategoryTooLong);
 
     task.category = new_category;
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -369,7 +377,7 @@ public fun update_category(task: &mut Task, category: vector<u8>, ctx: &mut TxCo
 }
 
 /// Add a tag to task
-public fun add_tag(task: &mut Task, tag: vector<u8>, ctx: &mut TxContext) {
+public fun add_tag(task: &mut Task, tag: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     assert!(vector::length(&task.tags) < MAX_TAGS_COUNT, ETooManyTags);
@@ -378,7 +386,7 @@ public fun add_tag(task: &mut Task, tag: vector<u8>, ctx: &mut TxContext) {
     validate_string_length(&new_tag, MAX_TAG_LENGTH, ETagTooLong);
 
     vector::push_back(&mut task.tags, new_tag);
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -387,13 +395,13 @@ public fun add_tag(task: &mut Task, tag: vector<u8>, ctx: &mut TxContext) {
 }
 
 /// Remove a tag from task
-public fun remove_tag(task: &mut Task, tag_index: u64, ctx: &mut TxContext) {
+public fun remove_tag(task: &mut Task, tag_index: u64, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     assert!(tag_index < vector::length(&task.tags), ETagTooLong);
 
     vector::remove(&mut task.tags, tag_index);
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -402,12 +410,12 @@ public fun remove_tag(task: &mut Task, tag_index: u64, ctx: &mut TxContext) {
 }
 
 /// Archive task (soft delete)
-public fun archive_task(task: &mut Task, ctx: &mut TxContext) {
+public fun archive_task(task: &mut Task, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
 
     task.status = STATUS_ARCHIVED;
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -462,7 +470,13 @@ public fun delete_task(mut task: Task, ctx: &TxContext) {
 // ==================== Access Control Functions ====================
 
 /// Share task with a user and assign role
-public fun add_user_with_role(task: &mut Task, user: address, role: u8, ctx: &mut TxContext) {
+public fun add_user_with_role(
+    task: &mut Task,
+    user: address,
+    role: u8,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(user != sender, ECannotShareWithSelf);
@@ -484,7 +498,7 @@ public fun add_user_with_role(task: &mut Task, user: address, role: u8, ctx: &mu
         table::add(&mut access_control.roles, user, role);
     };
 
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskShared {
         task_id: object::uid_to_address(&task.id),
@@ -494,7 +508,7 @@ public fun add_user_with_role(task: &mut Task, user: address, role: u8, ctx: &mu
 }
 
 /// Remove user access from task
-public fun remove_user(task: &mut Task, user: address, ctx: &mut TxContext) {
+public fun remove_user(task: &mut Task, user: address, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(user != task.creator, ECannotRemoveOwner);
@@ -510,7 +524,7 @@ public fun remove_user(task: &mut Task, user: address, ctx: &mut TxContext) {
 
     if (table::contains(&access_control.roles, user)) {
         table::remove(&mut access_control.roles, user);
-        task.updated_at = tx_context::epoch(ctx);
+        task.updated_at = clock::timestamp_ms(clock);
 
         event::emit(TaskAccessRevoked {
             task_id: object::uid_to_address(&task.id),
@@ -520,7 +534,13 @@ public fun remove_user(task: &mut Task, user: address, ctx: &mut TxContext) {
 }
 
 /// Update user role
-public fun update_user_role(task: &mut Task, user: address, new_role: u8, ctx: &mut TxContext) {
+public fun update_user_role(
+    task: &mut Task,
+    user: address,
+    new_role: u8,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(user != task.creator, ECannotRemoveOwner);
@@ -538,7 +558,7 @@ public fun update_user_role(task: &mut Task, user: address, new_role: u8, ctx: &
     if (table::contains(&access_control.roles, user)) {
         let user_role = table::borrow_mut(&mut access_control.roles, user);
         *user_role = new_role;
-        task.updated_at = tx_context::epoch(ctx);
+        task.updated_at = clock::timestamp_ms(clock);
 
         event::emit(TaskShared {
             task_id: object::uid_to_address(&task.id),
@@ -551,12 +571,17 @@ public fun update_user_role(task: &mut Task, user: address, new_role: u8, ctx: &
 // ==================== Walrus/Seal Integration ====================
 
 /// Add encrypted content blob ID from Walrus
-public fun add_content(task: &mut Task, content_blob_id: vector<u8>, ctx: &mut TxContext) {
+public fun add_content(
+    task: &mut Task,
+    content_blob_id: vector<u8>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
     task.content_blob_id = string::utf8(content_blob_id);
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskContentUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -565,7 +590,12 @@ public fun add_content(task: &mut Task, content_blob_id: vector<u8>, ctx: &mut T
 }
 
 /// Add encrypted file blob IDs from Walrus
-public fun add_files(task: &mut Task, file_blob_ids: vector<vector<u8>>, ctx: &mut TxContext) {
+public fun add_files(
+    task: &mut Task,
+    file_blob_ids: vector<vector<u8>>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -578,7 +608,7 @@ public fun add_files(task: &mut Task, file_blob_ids: vector<vector<u8>>, ctx: &m
         i = i + 1;
     };
 
-    task.updated_at = tx_context::epoch(ctx);
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskFilesAdded {
         task_id: object::uid_to_address(&task.id),
@@ -607,7 +637,7 @@ entry fun seal_approve(id: vector<u8>, task: &Task, ctx: &TxContext) {
 // ==================== Comments System ====================
 
 /// Add a comment to task
-public fun add_comment(task: &mut Task, content: vector<u8>, ctx: &mut TxContext) {
+public fun add_comment(task: &mut Task, content: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -616,7 +646,7 @@ public fun add_comment(task: &mut Task, content: vector<u8>, ctx: &mut TxContext
 
     init_comments(task);
 
-    let current_time = tx_context::epoch(ctx);
+    let current_time = clock::timestamp_ms(clock);
     let comment = Comment {
         author: sender,
         content: comment_content,
@@ -641,6 +671,7 @@ public fun edit_comment(
     task: &mut Task,
     comment_index: u64,
     new_content: vector<u8>,
+    clock: &Clock,
     ctx: &mut TxContext,
 ) {
     let sender = tx_context::sender(ctx);
@@ -657,7 +688,7 @@ public fun edit_comment(
     validate_string_length(&new_comment_content, MAX_COMMENT_LENGTH, EDescriptionTooLong);
 
     comment.content = new_comment_content;
-    comment.edited_at = tx_context::epoch(ctx);
+    comment.edited_at = clock::timestamp_ms(clock);
 
     event::emit(CommentEdited {
         task_id: object::uid_to_address(&task.id),
