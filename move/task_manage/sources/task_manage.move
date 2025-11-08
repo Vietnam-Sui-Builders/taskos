@@ -18,6 +18,7 @@ use sui::dynamic_field as df;
 use sui::event;
 use sui::sui::SUI;
 use sui::table::{Self, Table};
+use task_manage::version::{Self, Version};
 
 // ==================== Error Codes ====================
 
@@ -321,6 +322,7 @@ fun remove_from_registry(registry: &mut TaskRegistry, task_id: ID, status: u8) {
 
 /// Create a new task
 public fun create_task(
+    version: &Version,
     title: String,
     description: String,
     due_date: Option<u64>,
@@ -331,6 +333,8 @@ public fun create_task(
     registry: &mut TaskRegistry,
     ctx: &mut TxContext,
 ): Task {
+    version::check_is_valid(version);
+    
     // Validations
     validate_string_length(&title, MAX_TITLE_LENGTH, ETitleTooLong);
     validate_string_length(&description, MAX_DESCRIPTION_LENGTH, EDescriptionTooLong);
@@ -383,12 +387,14 @@ public fun create_task(
 
 /// Update task basic information
 public fun update_task_info(
+    version: &Version,
     task: &mut Task,
     title: String,
     description: String,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -406,7 +412,8 @@ public fun update_task_info(
 }
 
 /// Update task priority
-public fun update_priority(task: &mut Task, priority: u8, clock: &Clock, ctx: &mut TxContext) {
+public fun update_priority(version: &Version, task: &mut Task, priority: u8, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     validate_priority(priority);
@@ -422,11 +429,13 @@ public fun update_priority(task: &mut Task, priority: u8, clock: &Clock, ctx: &m
 
 /// Update task due date
 public fun update_due_date(
+    version: &Version,
     task: &mut Task,
     due_date: Option<u64>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -441,12 +450,14 @@ public fun update_due_date(
 
 /// Update task status
 public fun update_status(
+    version: &Version,
     task: &mut Task,
     status: u8,
     clock: &Clock,
     registry: &mut TaskRegistry,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     validate_status(status);
@@ -471,11 +482,13 @@ public fun update_status(
 
 /// Update task category
 public fun update_category(
+    version: &Version,
     task: &mut Task,
     category: vector<u8>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -492,7 +505,8 @@ public fun update_category(
 }
 
 /// Add a tag to task
-public fun add_tag(task: &mut Task, tag: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
+public fun add_tag(version: &Version, task: &mut Task, tag: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     assert!(vector::length(&task.tags) < MAX_TAGS_COUNT, ETooManyTags);
@@ -510,7 +524,8 @@ public fun add_tag(task: &mut Task, tag: vector<u8>, clock: &Clock, ctx: &mut Tx
 }
 
 /// Remove a tag from task
-public fun remove_tag(task: &mut Task, tag_index: u64, clock: &Clock, ctx: &mut TxContext) {
+public fun remove_tag(version: &Version, task: &mut Task, tag_index: u64, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     assert!(tag_index < vector::length(&task.tags), ETagTooLong);
@@ -526,11 +541,13 @@ public fun remove_tag(task: &mut Task, tag_index: u64, clock: &Clock, ctx: &mut 
 
 /// Archive task (soft delete)
 public fun archive_task(
+    version: &Version,
     task: &mut Task,
     clock: &Clock,
     registry: &mut TaskRegistry,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
 
@@ -556,7 +573,8 @@ public fun archive_task(
 }
 
 /// Delete task (hard delete) - only owner can delete
-public fun delete_task(mut task: Task, registry: &mut TaskRegistry, ctx: &mut TxContext) {
+public fun delete_task(version: &Version, mut task: Task, registry: &mut TaskRegistry, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(task.creator == sender, ENotOwner);
 
@@ -640,12 +658,14 @@ public fun get_task_count_by_status(registry: &TaskRegistry, status: u8): u64 {
 
 /// Share task with a user and assign role
 public fun add_user_with_role(
+    version: &Version,
     task: &mut Task,
     user: address,
     role: u8,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(user != sender, ECannotShareWithSelf);
@@ -677,7 +697,8 @@ public fun add_user_with_role(
 }
 
 /// Remove user access from task
-public fun remove_user(task: &mut Task, user: address, clock: &Clock, ctx: &mut TxContext) {
+public fun remove_user(version: &Version, task: &mut Task, user: address, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(user != task.creator, ECannotRemoveOwner);
@@ -704,12 +725,14 @@ public fun remove_user(task: &mut Task, user: address, clock: &Clock, ctx: &mut 
 
 /// Update user role
 public fun update_user_role(
+    version: &Version,
     task: &mut Task,
     user: address,
     new_role: u8,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(user != task.creator, ECannotRemoveOwner);
@@ -741,11 +764,13 @@ public fun update_user_role(
 
 /// Add encrypted content blob ID from Walrus
 public fun add_content(
+    version: &Version,
     task: &mut Task,
     content_blob_id: vector<u8>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -761,11 +786,13 @@ public fun add_content(
 
 /// Add encrypted file blob IDs from Walrus
 public fun add_files(
+    version: &Version,
     task: &mut Task,
     file_blob_ids: vector<vector<u8>>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -807,7 +834,8 @@ entry fun seal_approve(id: vector<u8>, task: &Task, ctx: &TxContext) {
 // ==================== Comments System ====================
 
 /// Add a comment to task
-public fun add_comment(task: &mut Task, content: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
+public fun add_comment(version: &Version, task: &mut Task, content: vector<u8>, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
 
@@ -838,12 +866,14 @@ public fun add_comment(task: &mut Task, content: vector<u8>, clock: &Clock, ctx:
 
 /// Edit own comment
 public fun edit_comment(
+    version: &Version,
     task: &mut Task,
     comment_index: u64,
     new_content: vector<u8>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
 
     assert!(df::exists_(&task.id, CommentsKey {}), ECommentNotFound);
@@ -868,7 +898,8 @@ public fun edit_comment(
 }
 
 /// Delete comment (author or owner can delete)
-public fun delete_comment(task: &mut Task, comment_index: u64, ctx: &mut TxContext) {
+public fun delete_comment(version: &Version, task: &mut Task, comment_index: u64, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
 
     assert!(df::exists_(&task.id, CommentsKey {}), ECommentNotFound);
@@ -895,7 +926,8 @@ public fun delete_comment(task: &mut Task, comment_index: u64, ctx: &mut TxConte
 // ==================== SUI Reward System ====================
 
 /// Deposit SUI reward into task (only Owner can deposit)
-public fun deposit_reward(task: &mut Task, payment: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+public fun deposit_reward(version: &Version, task: &mut Task, payment: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(task.status != STATUS_COMPLETED, ETaskAlreadyCompleted);
@@ -942,7 +974,8 @@ public fun deposit_reward(task: &mut Task, payment: Coin<SUI>, clock: &Clock, ct
 }
 
 /// Set assignee for task (only Owner can set)
-public fun set_assignee(task: &mut Task, assignee: address, clock: &Clock, ctx: &mut TxContext) {
+public fun set_assignee(version: &Version, task: &mut Task, assignee: address, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
 
@@ -962,7 +995,8 @@ public fun set_assignee(task: &mut Task, assignee: address, clock: &Clock, ctx: 
 }
 
 /// Approve completion and transfer reward to assignee (only Owner can approve)
-public fun approve_completion(task: &mut Task, ctx: &mut TxContext) {
+public fun approve_completion(version: &Version, task: &mut Task, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
     assert!(task.status == STATUS_COMPLETED, ETaskNotCompleted);
@@ -1083,7 +1117,8 @@ fun refund_deposits(task: &mut Task, ctx: &mut TxContext) {
 }
 
 /// Cancel task and refund all deposits (only Owner can cancel)
-public fun cancel_task(task: &mut Task, clock: &Clock, ctx: &mut TxContext) {
+public fun cancel_task(version: &Version, task: &mut Task, clock: &Clock, ctx: &mut TxContext) {
+    version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
 

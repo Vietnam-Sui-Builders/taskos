@@ -60,6 +60,9 @@
   - test_non_owner_cannot_cancel
 - Registry Tests
   - test_registry_status_indexing
+- Version Control Tests
+  - test_version_check_valid
+  - test_version_check_invalid
 */
 
 module task_manage::task_manage_tests;
@@ -92,6 +95,8 @@ use task_manage::task_manage::{
     role_owner,
     init_registry,
 };
+#[test_only]
+use task_manage::version::{Version, init_for_testing};
 
 // Test addresses
 const CREATOR: address = @0xA;
@@ -102,10 +107,12 @@ const USER_C: address = @0xC;
 fun create_simple_task(scenario: &mut Scenario, creator: address): address {
     ts::next_tx(scenario, creator);
     {
+        let version = ts::take_shared<Version>(scenario);
         let mut registry = ts::take_shared<TaskRegistry>(scenario);
         let clock = ts::take_shared<Clock>(scenario);
         let ctx = ts::ctx(scenario);
         let task = task_manage::create_task(
+            &version,
             string::utf8(b"Test Task"),
             string::utf8(b"Test Description"),
             option::some(1000000), // due_date
@@ -117,6 +124,7 @@ fun create_simple_task(scenario: &mut Scenario, creator: address): address {
             ctx,
         );
         let task_id = task_manage::get_task_id(&task);
+        ts::return_shared(version);
         ts::return_shared(registry);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, creator);
@@ -133,19 +141,22 @@ fun test_create_task_success() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
     ts::next_tx(&mut scenario, CREATOR);
     {
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
         let task = task_manage::create_task(
+            &version,
             string::utf8(b"My First Task"),
             string::utf8(b"This is a test task"),
             option::some(1000000),
@@ -165,6 +176,7 @@ fun test_create_task_success() {
         assert!(task_manage::get_category(&task) == string::utf8(b"Testing"), 5);
         assert!(vector::length(&task_manage::get_tags(&task)) == 2, 6);
 
+        ts::return_shared(version);
         ts::return_shared(registry);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
@@ -180,10 +192,11 @@ fun test_update_task_info() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -191,11 +204,13 @@ fun test_update_task_info() {
 
     ts::next_tx(&mut scenario, CREATOR);
     {
+        let version = ts::take_shared<Version>(&scenario);
         let mut task = ts::take_from_sender<Task>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         task_manage::update_task_info(
+            &version,
             &mut task,
             string::utf8(b"Updated Title"),
             string::utf8(b"Updated Description"),
@@ -206,6 +221,7 @@ fun test_update_task_info() {
         assert!(task_manage::get_title(&task) == string::utf8(b"Updated Title"), 0);
         assert!(task_manage::get_description(&task) == string::utf8(b"Updated Description"), 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -220,10 +236,11 @@ fun test_update_priority() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -232,13 +249,15 @@ fun test_update_priority() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::update_priority(&mut task, priority_critical(), &clock, ctx);
+        task_manage::update_priority(&version, &mut task, priority_critical(), &clock, ctx);
 
         assert!(task_manage::get_priority(&task) == priority_critical(), 0);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -253,10 +272,11 @@ fun test_update_status() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -267,14 +287,30 @@ fun test_update_status() {
         let mut task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::update_status(&mut task, status_in_progress(), &clock, &mut registry, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_in_progress(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
         assert!(task_manage::get_status(&task) == status_in_progress(), 0);
 
-        task_manage::update_status(&mut task, status_completed(), &clock, &mut registry, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_completed(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
         assert!(task_manage::get_status(&task) == status_completed(), 1);
 
+        ts::return_shared(version);
         ts::return_shared(registry);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
@@ -290,10 +326,11 @@ fun test_add_and_remove_tag() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -302,17 +339,19 @@ fun test_add_and_remove_tag() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let initial_count = vector::length(&task_manage::get_tags(&task));
 
-        task_manage::add_tag(&mut task, b"new-tag", &clock, ctx);
+        task_manage::add_tag(&version, &mut task, b"new-tag", &clock, ctx);
         assert!(vector::length(&task_manage::get_tags(&task)) == initial_count + 1, 0);
 
-        task_manage::remove_tag(&mut task, 0, &clock, ctx);
+        task_manage::remove_tag(&version, &mut task, 0, &clock, ctx);
         assert!(vector::length(&task_manage::get_tags(&task)) == initial_count, 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -327,10 +366,11 @@ fun test_archive_task() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -341,13 +381,15 @@ fun test_archive_task() {
         let mut task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::archive_task(&mut task, &clock, &mut registry, ctx);
+        task_manage::archive_task(&version, &mut task, &clock, &mut registry, ctx);
 
         assert!(task_manage::get_status(&task) == status_archived(), 0);
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -362,10 +404,11 @@ fun test_delete_task() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -375,10 +418,12 @@ fun test_delete_task() {
     {
         let task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::delete_task(task, &mut registry, ctx);
+        task_manage::delete_task(&version, task, &mut registry, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(registry);
     };
 
@@ -393,10 +438,11 @@ fun test_delete_task_not_owner() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -414,10 +460,12 @@ fun test_delete_task_not_owner() {
     {
         let task = ts::take_from_address<Task>(&scenario, CREATOR);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::delete_task(task, &mut registry, ctx); // Should fail
+        task_manage::delete_task(&version, task, &mut registry, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(registry);
     };
 
@@ -433,10 +481,11 @@ fun test_share_task_with_role() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -445,14 +494,16 @@ fun test_share_task_with_role() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
 
         assert!(task_manage::get_user_role(&task, USER_B) == role_editor(), 0);
         assert!(task_manage::has_access(&task, USER_B), 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -467,10 +518,11 @@ fun test_update_user_role() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -479,17 +531,19 @@ fun test_update_user_role() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         // Add user as viewer
-        task_manage::add_user_with_role(&mut task, USER_B, role_viewer(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_viewer(), &clock, ctx);
         assert!(task_manage::get_user_role(&task, USER_B) == role_viewer(), 0);
 
         // Upgrade to editor
-        task_manage::update_user_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::update_user_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
         assert!(task_manage::get_user_role(&task, USER_B) == role_editor(), 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -504,10 +558,11 @@ fun test_remove_user_access() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -516,16 +571,18 @@ fun test_remove_user_access() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
         assert!(task_manage::has_access(&task, USER_B), 0);
 
-        task_manage::remove_user(&mut task, USER_B, &clock, ctx);
+        task_manage::remove_user(&version, &mut task, USER_B, &clock, ctx);
         assert!(!task_manage::has_access(&task, USER_B), 1);
         assert!(task_manage::get_user_role(&task, USER_B) == 0, 2);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -540,10 +597,11 @@ fun test_creator_has_owner_role() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -570,10 +628,11 @@ fun test_non_owner_cannot_share() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -582,12 +641,14 @@ fun test_non_owner_cannot_share() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         // Share with USER_B as editor
-        task_manage::add_user_with_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -596,11 +657,13 @@ fun test_non_owner_cannot_share() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_C, role_viewer(), &clock, ctx); // Should fail
+        task_manage::add_user_with_role(&version, &mut task, USER_C, role_viewer(), &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -616,10 +679,11 @@ fun test_cannot_share_with_self() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -628,11 +692,13 @@ fun test_cannot_share_with_self() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, CREATOR, role_editor(), &clock, ctx); // Should fail
+        task_manage::add_user_with_role(&version, &mut task, CREATOR, role_editor(), &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -649,10 +715,11 @@ fun test_add_content() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -661,15 +728,17 @@ fun test_add_content() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_content(&mut task, b"blob_id_12345", &clock, ctx);
+        task_manage::add_content(&version, &mut task, b"blob_id_12345", &clock, ctx);
 
         let content_blob_id = task_manage::get_content_blob_id(&task);
         assert!(option::is_some(&content_blob_id), 0);
         assert!(*option::borrow(&content_blob_id) == string::utf8(b"blob_id_12345"), 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -684,10 +753,11 @@ fun test_add_files() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -696,15 +766,17 @@ fun test_add_files() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let file_ids = vector[b"file_1", b"file_2", b"file_3"];
-        task_manage::add_files(&mut task, file_ids, &clock, ctx);
+        task_manage::add_files(&version, &mut task, file_ids, &clock, ctx);
 
         let files = task_manage::get_file_blob_ids(&task);
         assert!(vector::length(&files) == 3, 0);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -719,10 +791,11 @@ fun test_verify_access_creator() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -731,10 +804,12 @@ fun test_verify_access_creator() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         assert!(task_manage::verify_access(&task, ctx), 0);
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -748,10 +823,11 @@ fun test_verify_access_shared_user() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -760,11 +836,13 @@ fun test_verify_access_shared_user() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_viewer(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_viewer(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -772,10 +850,12 @@ fun test_verify_access_shared_user() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         assert!(task_manage::verify_access(&task, ctx), 0);
 
+        ts::return_shared(version);
         ts::return_to_address(CREATOR, task);
     };
 
@@ -789,10 +869,11 @@ fun test_namespace_generation() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -820,10 +901,11 @@ fun test_add_comment() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -832,14 +914,16 @@ fun test_add_comment() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&mut task, b"This is my first comment", &clock, ctx);
+        task_manage::add_comment(&version, &mut task, b"This is my first comment", &clock, ctx);
 
         let comments = task_manage::get_comments(&task);
         assert!(vector::length(&comments) == 1, 0);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -854,10 +938,11 @@ fun test_edit_comment() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -866,11 +951,13 @@ fun test_edit_comment() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&mut task, b"Original comment", &clock, ctx);
+        task_manage::add_comment(&version, &mut task, b"Original comment", &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -878,14 +965,16 @@ fun test_edit_comment() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::edit_comment(&mut task, 0, b"Edited comment", &clock, ctx);
+        task_manage::edit_comment(&version, &mut task, 0, b"Edited comment", &clock, ctx);
 
         let comments = task_manage::get_comments(&task);
         assert!(vector::length(&comments) == 1, 0);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -900,10 +989,11 @@ fun test_delete_comment_by_author() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -912,15 +1002,17 @@ fun test_delete_comment_by_author() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&mut task, b"Comment to delete", &clock, ctx);
+        task_manage::add_comment(&version, &mut task, b"Comment to delete", &clock, ctx);
         assert!(vector::length(&task_manage::get_comments(&task)) == 1, 0);
 
-        task_manage::delete_comment(&mut task, 0, ctx);
+        task_manage::delete_comment(&version, &mut task, 0, ctx);
         assert!(vector::length(&task_manage::get_comments(&task)) == 0, 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -935,10 +1027,11 @@ fun test_delete_comment_by_owner() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -948,11 +1041,13 @@ fun test_delete_comment_by_owner() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -961,11 +1056,13 @@ fun test_delete_comment_by_owner() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&mut task, b"Comment by USER_B", &clock, ctx);
+        task_manage::add_comment(&version, &mut task, b"Comment by USER_B", &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -974,14 +1071,16 @@ fun test_delete_comment_by_owner() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         assert!(vector::length(&task_manage::get_comments(&task)) == 1, 0);
 
-        task_manage::delete_comment(&mut task, 0, ctx);
+        task_manage::delete_comment(&version, &mut task, 0, ctx);
 
         assert!(vector::length(&task_manage::get_comments(&task)) == 0, 1);
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -996,10 +1095,11 @@ fun test_viewer_cannot_add_comment() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1008,11 +1108,13 @@ fun test_viewer_cannot_add_comment() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_viewer(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_viewer(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -1020,11 +1122,13 @@ fun test_viewer_cannot_add_comment() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&mut task, b"Should fail", &clock, ctx); // Should fail
+        task_manage::add_comment(&version, &mut task, b"Should fail", &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -1042,19 +1146,22 @@ fun test_invalid_priority() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
     ts::next_tx(&mut scenario, CREATOR);
     {
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
         let task = task_manage::create_task(
+            &version,
             string::utf8(b"Task"),
             string::utf8(b"Description"),
             option::some(1000000),
@@ -1066,6 +1173,7 @@ fun test_invalid_priority() {
             ctx,
         );
 
+        ts::return_shared(version);
         ts::return_shared(registry);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
@@ -1082,10 +1190,11 @@ fun test_invalid_status() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1096,11 +1205,13 @@ fun test_invalid_status() {
         let mut task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::update_status(&mut task, 99, &clock, &mut registry, ctx); // Invalid status
+        task_manage::update_status(&version, &mut task, 99, &clock, &mut registry, ctx); // Invalid status
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1116,10 +1227,11 @@ fun test_invalid_role() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1128,11 +1240,13 @@ fun test_invalid_role() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, 99, &clock, ctx); // Invalid role
+        task_manage::add_user_with_role(&version, &mut task, USER_B, 99, &clock, ctx); // Invalid role
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1149,19 +1263,22 @@ fun test_is_overdue() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
     ts::next_tx(&mut scenario, CREATOR);
     {
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
         let task = task_manage::create_task(
+            &version,
             string::utf8(b"Task"),
             string::utf8(b"Description"),
             option::some(100), // due_date in the past
@@ -1177,6 +1294,7 @@ fun test_is_overdue() {
         assert!(task_manage::is_overdue(&task, 200), 0);
         assert!(!task_manage::is_overdue(&task, 50), 1);
 
+        ts::return_shared(version);
         ts::return_shared(registry);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
@@ -1211,21 +1329,24 @@ fun test_task_with_no_due_date() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
     ts::next_tx(&mut scenario, CREATOR);
     {
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         // Create task without due date
         let task = task_manage::create_task(
+            &version,
             string::utf8(b"No Deadline Task"),
             string::utf8(b"This task has no deadline"),
             option::none(), // No due date
@@ -1244,6 +1365,7 @@ fun test_task_with_no_due_date() {
         // Verify task is not overdue (because no due date)
         assert!(!task_manage::is_overdue(&task, 999999999), 1);
 
+        ts::return_shared(version);
         ts::return_shared(registry);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
@@ -1259,10 +1381,11 @@ fun test_task_content_blob_id_none_initially() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1289,10 +1412,11 @@ fun test_update_due_date_to_none() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1301,6 +1425,7 @@ fun test_update_due_date_to_none() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
@@ -1309,7 +1434,7 @@ fun test_update_due_date_to_none() {
         assert!(option::is_some(&due_date), 0);
 
         // Update to None (remove due date)
-        task_manage::update_due_date(&mut task, option::none(), &clock, ctx);
+        task_manage::update_due_date(&version, &mut task, option::none(), &clock, ctx);
 
         // Verify due_date is now None
         let due_date_after = task_manage::get_due_date(&task);
@@ -1318,6 +1443,7 @@ fun test_update_due_date_to_none() {
         // Verify task is not overdue anymore
         assert!(!task_manage::is_overdue(&task, 999999999), 2);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1334,10 +1460,11 @@ fun test_deposit_reward_success() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1346,22 +1473,24 @@ fun test_deposit_reward_success() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
         assert!(task_manage::get_reward_balance(&task) == 1000, 0);
         assert!(task_manage::get_deposit_amount(&task, CREATOR) == 1000, 1);
 
         // Deposit more from same user
         let payment2 = coin::mint_for_testing<SUI>(500, ctx);
-        task_manage::deposit_reward(&mut task, payment2, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment2, &clock, ctx);
 
         assert!(task_manage::get_reward_balance(&task) == 1500, 2);
         assert!(task_manage::get_deposit_amount(&task, CREATOR) == 1500, 3);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1376,10 +1505,11 @@ fun test_deposit_reward_multiple_owners() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1389,11 +1519,13 @@ fun test_deposit_reward_multiple_owners() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_owner(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_owner(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1402,15 +1534,17 @@ fun test_deposit_reward_multiple_owners() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
         assert!(task_manage::get_reward_balance(&task) == 1000, 0);
         assert!(task_manage::get_deposit_amount(&task, CREATOR) == 1000, 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -1419,16 +1553,18 @@ fun test_deposit_reward_multiple_owners() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(500, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
         assert!(task_manage::get_reward_balance(&task) == 1500, 2);
         assert!(task_manage::get_deposit_amount(&task, USER_B) == 500, 3);
         assert!(task_manage::get_deposit_amount(&task, CREATOR) == 1000, 4);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -1444,10 +1580,11 @@ fun test_non_owner_cannot_deposit() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1457,11 +1594,13 @@ fun test_non_owner_cannot_deposit() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -1470,12 +1609,14 @@ fun test_non_owner_cannot_deposit() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx); // Should fail
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -1491,10 +1632,11 @@ fun test_deposit_zero_amount_fails() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1503,12 +1645,14 @@ fun test_deposit_zero_amount_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(0, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx); // Should fail
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1524,10 +1668,11 @@ fun test_deposit_after_completed_fails() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1538,11 +1683,20 @@ fun test_deposit_after_completed_fails() {
         let mut task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::update_status(&mut task, status_completed(), &clock, &mut registry, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_completed(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1550,12 +1704,14 @@ fun test_deposit_after_completed_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx); // Should fail
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1570,10 +1726,11 @@ fun test_set_assignee_success() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1582,17 +1739,19 @@ fun test_set_assignee_success() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::set_assignee(&mut task, USER_B, &clock, ctx);
+        task_manage::set_assignee(&version, &mut task, USER_B, &clock, ctx);
 
         assert!(task_manage::get_assignee(&task) == USER_B, 0);
 
         // Update assignee
-        task_manage::set_assignee(&mut task, USER_C, &clock, ctx);
+        task_manage::set_assignee(&version, &mut task, USER_C, &clock, ctx);
         assert!(task_manage::get_assignee(&task) == USER_C, 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1608,10 +1767,11 @@ fun test_non_owner_cannot_set_assignee() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1621,11 +1781,13 @@ fun test_non_owner_cannot_set_assignee() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -1634,11 +1796,13 @@ fun test_non_owner_cannot_set_assignee() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::set_assignee(&mut task, USER_C, &clock, ctx); // Should fail
+        task_manage::set_assignee(&version, &mut task, USER_C, &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -1653,10 +1817,11 @@ fun test_approve_completion_success() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1666,12 +1831,14 @@ fun test_approve_completion_success() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1680,14 +1847,23 @@ fun test_approve_completion_success() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::set_assignee(&mut task, USER_B, &clock, ctx);
-        task_manage::update_status(&mut task, status_completed(), &clock, &mut registry, ctx);
+        task_manage::set_assignee(&version, &mut task, USER_B, &clock, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_completed(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1696,14 +1872,16 @@ fun test_approve_completion_success() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::approve_completion(&mut task, ctx);
+        task_manage::approve_completion(&version, &mut task, ctx);
 
         // Check dynamic fields cleaned up
         assert!(task_manage::get_reward_balance(&task) == 0, 0); // Since removed
         assert!(task_manage::get_deposit_amount(&task, CREATOR) == 0, 1); // Since removed
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -1727,10 +1905,11 @@ fun test_approve_completion_twice_fails() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1740,16 +1919,25 @@ fun test_approve_completion_twice_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
-        task_manage::set_assignee(&mut task, USER_B, &clock, ctx);
-        task_manage::update_status(&mut task, status_completed(), &clock, &mut registry, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
+        task_manage::set_assignee(&version, &mut task, USER_B, &clock, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_completed(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1758,10 +1946,12 @@ fun test_approve_completion_twice_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::approve_completion(&mut task, ctx);
+        task_manage::approve_completion(&version, &mut task, ctx);
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -1769,10 +1959,12 @@ fun test_approve_completion_twice_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::approve_completion(&mut task, ctx); // Should fail
+        task_manage::approve_completion(&version, &mut task, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -1787,10 +1979,11 @@ fun test_approve_without_completed_fails() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1800,11 +1993,13 @@ fun test_approve_without_completed_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::set_assignee(&mut task, USER_B, &clock, ctx);
+        task_manage::set_assignee(&version, &mut task, USER_B, &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1813,10 +2008,12 @@ fun test_approve_without_completed_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::approve_completion(&mut task, ctx); // Should fail
+        task_manage::approve_completion(&version, &mut task, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -1831,10 +2028,11 @@ fun test_approve_without_assignee_fails() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1846,11 +2044,20 @@ fun test_approve_without_assignee_fails() {
         let mut task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::update_status(&mut task, status_completed(), &clock, &mut registry, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_completed(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1859,10 +2066,12 @@ fun test_approve_without_assignee_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::approve_completion(&mut task, ctx); // Should fail
+        task_manage::approve_completion(&version, &mut task, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -1877,10 +2086,11 @@ fun test_approve_without_reward_fails() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1890,14 +2100,23 @@ fun test_approve_without_reward_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::set_assignee(&mut task, USER_B, &clock, ctx);
-        task_manage::update_status(&mut task, status_completed(), &clock, &mut registry, ctx);
+        task_manage::set_assignee(&version, &mut task, USER_B, &clock, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_completed(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -1906,10 +2125,12 @@ fun test_approve_without_reward_fails() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::approve_completion(&mut task, ctx); // Should fail
+        task_manage::approve_completion(&version, &mut task, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_to_sender(&scenario, task);
     };
 
@@ -1923,10 +2144,11 @@ fun test_cancel_task_refunds() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -1936,14 +2158,16 @@ fun test_cancel_task_refunds() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_owner(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_owner(), &clock, ctx);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -1951,12 +2175,14 @@ fun test_cancel_task_refunds() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(500, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -1965,14 +2191,16 @@ fun test_cancel_task_refunds() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::cancel_task(&mut task, &clock, ctx);
+        task_manage::cancel_task(&version, &mut task, &clock, ctx);
 
         assert!(task_manage::get_status(&task) == status_todo(), 0);
         assert!(task_manage::get_reward_balance(&task) == 0, 1);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -2002,10 +2230,11 @@ fun test_archive_task_refunds() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -2015,12 +2244,14 @@ fun test_archive_task_refunds() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -2031,14 +2262,16 @@ fun test_archive_task_refunds() {
         let mut task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::archive_task(&mut task, &clock, &mut registry, ctx);
+        task_manage::archive_task(&version, &mut task, &clock, &mut registry, ctx);
 
         assert!(task_manage::get_status(&task) == status_archived(), 0);
         assert!(task_manage::get_reward_balance(&task) == 0, 1);
 
         ts::return_shared(registry);
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -2061,10 +2294,11 @@ fun test_delete_task_refunds() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -2074,12 +2308,14 @@ fun test_delete_task_refunds() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         let payment = coin::mint_for_testing<SUI>(1000, ctx);
-        task_manage::deposit_reward(&mut task, payment, &clock, ctx);
+        task_manage::deposit_reward(&version, &mut task, payment, &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_sender(&scenario, task);
     };
@@ -2089,10 +2325,12 @@ fun test_delete_task_refunds() {
     {
         let task = ts::take_from_sender<Task>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::delete_task(task, &mut registry, ctx);
+        task_manage::delete_task(&version, task, &mut registry, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(registry);
     };
 
@@ -2115,10 +2353,11 @@ fun test_non_owner_cannot_cancel() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
@@ -2128,11 +2367,13 @@ fun test_non_owner_cannot_cancel() {
     ts::next_tx(&mut scenario, CREATOR);
     {
         let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_user_with_role(&mut task, USER_B, role_editor(), &clock, ctx);
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task, CREATOR);
     };
@@ -2141,11 +2382,13 @@ fun test_non_owner_cannot_cancel() {
     ts::next_tx(&mut scenario, USER_B);
     {
         let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let version = ts::take_shared<Version>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::cancel_task(&mut task, &clock, ctx); // Should fail
+        task_manage::cancel_task(&version, &mut task, &clock, ctx); // Should fail
 
+        ts::return_shared(version);
         ts::return_shared(clock);
         ts::return_to_address(CREATOR, task);
     };
@@ -2160,22 +2403,25 @@ fun test_registry_status_indexing() {
     // Create system objects including Clock
     ts::create_system_objects(&mut scenario);
 
-    // Initialize registry
+    // Initialize version and registry
     ts::next_tx(&mut scenario, CREATOR);
     {
         let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
         init_registry(ctx);
     };
 
     // Create 4 tasks, all start as TODO
     ts::next_tx(&mut scenario, CREATOR);
     {
+        let version = ts::take_shared<Version>(&scenario);
         let mut registry = ts::take_shared<TaskRegistry>(&scenario);
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
         // Create task 1
         let task1 = task_manage::create_task(
+            &version,
             string::utf8(b"Task 1"),
             string::utf8(b"Desc 1"),
             option::some(1000000),
@@ -2190,6 +2436,7 @@ fun test_registry_status_indexing() {
 
         // Create task 2
         let mut task2 = task_manage::create_task(
+            &version,
             string::utf8(b"Task 2"),
             string::utf8(b"Desc 2"),
             option::some(1000000),
@@ -2204,6 +2451,7 @@ fun test_registry_status_indexing() {
 
         // Create task 3
         let mut task3 = task_manage::create_task(
+            &version,
             string::utf8(b"Task 3"),
             string::utf8(b"Desc 3"),
             option::some(1000000),
@@ -2218,6 +2466,7 @@ fun test_registry_status_indexing() {
 
         // Create task 4
         let mut task4 = task_manage::create_task(
+            &version,
             string::utf8(b"Task 4"),
             string::utf8(b"Desc 4"),
             option::some(1000000),
@@ -2240,9 +2489,23 @@ fun test_registry_status_indexing() {
         assert!(task_manage::get_task_count_by_status(&registry, status_todo()) == 4, 5);
 
         // Update statuses
-        task_manage::update_status(&mut task2, status_in_progress(), &clock, &mut registry, ctx);
-        task_manage::update_status(&mut task3, status_completed(), &clock, &mut registry, ctx);
-        task_manage::archive_task(&mut task4, &clock, &mut registry, ctx);
+        task_manage::update_status(
+            &version,
+            &mut task2,
+            status_in_progress(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
+        task_manage::update_status(
+            &version,
+            &mut task3,
+            status_completed(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
+        task_manage::archive_task(&version, &mut task4, &clock, &mut registry, ctx);
 
         // Check each status
         let todo_ids = task_manage::get_tasks_by_status(&registry, status_todo());
@@ -2268,12 +2531,111 @@ fun test_registry_status_indexing() {
         assert!(task_manage::get_task_count_by_status(&registry, status_archived()) == 1, 17);
 
         // Clean up
+        ts::return_shared(version);
         ts::return_shared(registry);
         ts::return_shared(clock);
         sui::transfer::public_transfer(task1, CREATOR);
         sui::transfer::public_transfer(task2, CREATOR);
         sui::transfer::public_transfer(task3, CREATOR);
         sui::transfer::public_transfer(task4, CREATOR);
+    };
+
+    ts::end(scenario);
+}
+
+// ==================== Version Control Tests ====================
+
+#[test]
+fun test_version_check_valid() {
+    let mut scenario = ts::begin(CREATOR);
+
+    // Create system objects including Clock
+    ts::create_system_objects(&mut scenario);
+
+    // Initialize version and registry
+    ts::next_tx(&mut scenario, CREATOR);
+    {
+        let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
+        init_registry(ctx);
+    };
+
+    // Create task with valid version - should succeed
+    ts::next_tx(&mut scenario, CREATOR);
+    {
+        let version = ts::take_shared<Version>(&scenario);
+        let mut registry = ts::take_shared<TaskRegistry>(&scenario);
+        let clock = ts::take_shared<Clock>(&scenario);
+        let ctx = ts::ctx(&mut scenario);
+
+        let task = task_manage::create_task(
+            &version,
+            string::utf8(b"Test Task"),
+            string::utf8(b"Description"),
+            option::none(),
+            priority_medium(),
+            string::utf8(b"Testing"),
+            vector::empty(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
+
+        assert!(task_manage::get_title(&task) == string::utf8(b"Test Task"), 0);
+
+        ts::return_shared(version);
+        ts::return_shared(registry);
+        ts::return_shared(clock);
+        sui::transfer::public_transfer(task, CREATOR);
+    };
+
+    ts::end(scenario);
+}
+
+#[test]
+fun test_version_check_on_all_operations() {
+    let mut scenario = ts::begin(CREATOR);
+
+    // Create system objects including Clock
+    ts::create_system_objects(&mut scenario);
+
+    // Initialize version and registry
+    ts::next_tx(&mut scenario, CREATOR);
+    {
+        let ctx = ts::ctx(&mut scenario);
+        init_for_testing(ctx);
+        init_registry(ctx);
+    };
+
+    let _task_id = create_simple_task(&mut scenario, CREATOR);
+
+    // Test various operations with valid version - all should succeed
+    ts::next_tx(&mut scenario, CREATOR);
+    {
+        let version = ts::take_shared<Version>(&scenario);
+        let mut task = ts::take_from_sender<Task>(&scenario);
+        let clock = ts::take_shared<Clock>(&scenario);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Update task info
+        task_manage::update_task_info(
+            &version,
+            &mut task,
+            string::utf8(b"Updated"),
+            string::utf8(b"Updated desc"),
+            &clock,
+            ctx,
+        );
+
+        // Add comment
+        task_manage::add_comment(&version, &mut task, b"Test comment", &clock, ctx);
+
+        // Add user with role
+        task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
+
+        ts::return_shared(version);
+        ts::return_shared(clock);
+        ts::return_to_sender(&scenario, task);
     };
 
     ts::end(scenario);
