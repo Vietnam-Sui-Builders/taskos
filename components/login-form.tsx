@@ -25,6 +25,7 @@ import {
   PasskeyKeypair,
 } from "@mysten/sui/keypairs/passkey";
 import { useWalletStorage } from "@/hooks/use-wallet-storage";
+import { useFaucet } from "@/hooks/use-faucet";
 
 interface WalletConnectedSectionProps {
   currentAccount: WalletAccount;
@@ -86,6 +87,7 @@ function EnhancedLoginForm() {
   const currentAccount = useCurrentAccount();
   const { mutateAsync: signAndExecuteTransaction } =
     useSignAndExecuteTransaction();
+  const faucet = useFaucet();
   const [passkeyAccount, setPasskeyAccount] = useState<WalletAccount | null>(
     null
   );
@@ -183,6 +185,7 @@ function EnhancedLoginForm() {
       setPasskeyAccount(newAccount);
       saveWalletToStorage(newAccount, "passkey");
       console.log("New passkey wallet created:", newAccount.address);
+      faucet.mutate(newAccount.address);
     } catch (error) {
       console.error("Passkey connection error:", error);
       alert("Failed to connect with passkey: " + (error as Error).message);
