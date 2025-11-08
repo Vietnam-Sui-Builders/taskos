@@ -24,9 +24,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
     const checkAuth = async () => {
       console.log("AuthGuard: Checking authentication...");
       console.log("AuthGuard: currentAccount:", currentAccount);
-      setIsAuthenticated(true);
-      setIsChecking(false);
-      return;
       // Check if wallet is connected via dApp kit
       if (currentAccount?.address) {
         console.log("✅ Wallet connected:", currentAccount.address);
@@ -36,15 +33,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
       }
 
       // Check if wallet is stored in localStorage (passkey)
-      // const savedWallet = loadWalletFromStorage();
-      // console.log("AuthGuard: savedWallet:", savedWallet);
+      const savedWallet = loadWalletFromStorage();
+      console.log("AuthGuard: savedWallet:", savedWallet);
       
-      // if (savedWallet?.account?.address) {
-      //   console.log("✅ Wallet found in storage:", savedWallet.account.address);
-      //   setIsAuthenticated(true);
-      //   setIsChecking(false);
-      //   return;
-      // }
+      if (savedWallet?.account?.address) {
+        console.log("✅ Wallet found in storage:", savedWallet.account.address);
+        setIsAuthenticated(true);
+        setIsChecking(false);
+        return;
+      }
 
       // No wallet found - redirect to login
       console.log("❌ No wallet found, redirecting to login");

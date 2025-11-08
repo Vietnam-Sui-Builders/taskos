@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AIChat } from "@/components/ai-chat";
 import "./globals.css";
 
 import Provider from "@/components/providers/provider";
@@ -39,6 +40,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Provider>{children}</Provider>
+          <AIChat />
         </ThemeProvider>
       </body>
     </html>

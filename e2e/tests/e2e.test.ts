@@ -1,45 +1,49 @@
 import { SuiTransactionBlockResponse } from "@mysten/sui/client";
-import { mintHeroWithWeapon } from "../helpers/mintHeroWithWeapon";
 import { parseCreatedObjectsIds } from "../helpers/parseCreatedObjectIds";
 import { suiClient } from "../suiClient";
-import { getWeaponIdOfHero } from "../helpers/getWeaponIdOfHero";
-import { getHeroesRegistry } from "../helpers/getHeroesRegistry";
+import { createAndUpdateTask } from "../helpers/createAndUpdateTask";
+import { getTaskInfo } from "../helpers/getTaskInfo";
+import { getTasksRegistry } from "../helpers/getTasksRegistry";
 
-describe("Mint a Hero NFT, a Weapon NFT and equip it", () => {
-  let txResponse: SuiTransactionBlockResponse;
-  let heroId: string | undefined;
-  let heroesIds: string[] = [];
+describe("Create a Task, update Task", () => {
+    let txResponse: SuiTransactionBlockResponse;
+    let taskId: string | undefined;
+    let tasksIds: string[] = [];
 
-  beforeAll(async () => {
-    txResponse = await mintHeroWithWeapon();
-    await suiClient.waitForTransaction({ digest: txResponse.digest, timeout: 5_000 });
-    console.log("Executed transaction with txDigest:", txResponse.digest);
-  });
-
-  test("Transaction Status", () => {
-    expect(txResponse.effects).toBeDefined();
-    expect(txResponse.effects!.status.status).toBe("success");
-  });
-
-  test("Created Hero", async () => {
-    expect(txResponse.objectChanges).toBeDefined();
-    const { heroesIds } = parseCreatedObjectsIds({
-      objectChanges: txResponse.objectChanges!,
+    beforeAll(async () => {
+        txResponse = await createAndUpdateTask();
+        await suiClient.waitForTransaction({
+            digest: txResponse.digest,
+            timeout: 5_000,
+        });
+        console.log("Executed transaction with txDigest:", txResponse.digest);
     });
-    expect(heroesIds.length).toBe(1);
-    heroId = heroesIds[0];
-  });
 
-  test("Hero is equiped with a Weapon", async () => {
-    const weaponId = await getWeaponIdOfHero(heroId!);
-    expect(weaponId).toBeDefined();
-  });
+    test("Transaction Status", () => {
+        expect(txResponse.effects).toBeDefined();
+        expect(txResponse.effects!.status.status).toBe("success");
+    });
 
-  test("Heroes registry", async () => {
-    const { ids, counter } = await getHeroesRegistry();
-    heroesIds = ids;
-    expect(ids.length).toBeGreaterThan(0);
-    expect(ids).toContain(heroId);
-    expect(counter).toBeGreaterThan(0);
-  });
+    test("Created Task", async () => {
+        expect(txResponse.objectChanges).toBeDefined();
+        const { tasksIds } = parseCreatedObjectsIds({
+            objectChanges: txResponse.objectChanges!,
+        });
+        expect(tasksIds.length).toBe(1);
+        taskId = tasksIds[0];
+    });
+
+    test("Task is updated", async () => {
+        const task = await getTaskInfo(taskId!);
+        expect(task).toBeDefined();
+    });
+
+    test("Tasks registry", async () => {
+        const { status, ids } = await getTasksRegistry(1);
+        console.log("Registry with status: ", status);
+        tasksIds = ids;
+        expect(ids.length).toBeGreaterThan(0);
+        expect(ids).toContain(taskId);
+        expect(ids.length).toBeGreaterThan(0);
+    });
 });
