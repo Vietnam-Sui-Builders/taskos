@@ -1,327 +1,418 @@
 "use client";
 
 import Link from "next/link";
-import LetterGlitch from "@/components/LetterGlitch";
+import NavBar from "@/components/NavBar";
 import {
   Database,
   Share2,
-  Trophy,
-  KeyRound,
-  Code2,
-  Waves,
   Sparkles,
+  Trophy,
+  ArrowRight,
+  Mail,
   Twitter,
   Github,
-  Mail,
 } from "lucide-react";
 
-const primaryNav = [
-  { label: "Home", href: "#home" },
-  { label: "Features", href: "#features" },
-  { label: "Tech", href: "#tech" },
-  { label: "Contact", href: "#contact" },
-];
-
-const featureHighlights = [
+const featureItems = [
   {
-    title: "Walrus-Powered Storage",
+    title: "Create tasks, store on Walrus",
     description:
-      "Persist every task on Walrus so your team can rely on verifiable, tamper-proof state.",
+      "Every task writes to verifiable Walrus storage so progress is always auditable and recoverable.",
     icon: Database,
   },
   {
-    title: "Collaborative Sharing",
+    title: "Share tasks instantly",
     description:
-      "Invite contributors instantly and sync updates across wallets without friction.",
+      "Invite contributors with a link. Collaborators see the on-chain state in real time.",
     icon: Share2,
   },
   {
-    title: "Prize Pools & Rewards",
+    title: "Plan with an AI co-pilot",
     description:
-      "Stake incentives, track progress, and reward completions directly on-chain.",
-    icon: Trophy,
+      "Auto-generate checklists, dependencies, and schedules tailored to your team’s flow.",
+    icon: Sparkles,
   },
   {
-    title: "Passkey-Native Login",
+    title: "Prize pools for completion",
     description:
-      "Skip seed phrases with Enoki passkeys for a seamless, secure onboarding flow.",
-    icon: KeyRound,
+      "Stake incentives and release rewards automatically when tasks are marked done.",
+    icon: Trophy,
   },
 ];
+
+const MoveGlyph = () => (
+  <svg
+    className="h-10 w-10"
+    viewBox="0 0 128 140"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M64 10L15 38V94L64 122L113 94V38L64 10Z"
+      fill="url(#grad)"
+      stroke="#161A1E"
+      strokeWidth="6"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M41 92V48L64 62L87 48V92"
+      stroke="white"
+      strokeWidth="12"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M41 82L61 94"
+      stroke="#161A1E"
+      strokeWidth="6"
+      strokeLinecap="round"
+    />
+    <path
+      d="M87 82L67 94"
+      stroke="#161A1E"
+      strokeWidth="6"
+      strokeLinecap="round"
+    />
+    <defs>
+      <linearGradient
+        id="grad"
+        x1="64"
+        y1="10"
+        x2="64"
+        y2="122"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#FF8833" />
+        <stop offset="1" stopColor="#FF5A00" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
 
 const techStack = [
   {
     name: "Walrus",
-    description: "Durable object storage for decentralized data availability.",
-    icon: Database,
-  },
-  {
-    name: "Move",
-    description: "Safe-by-design smart contract language powering our logic.",
-    icon: Code2,
+    description: "Tamper-proof object storage powering our task archive.",
+    logo: (
+      <img
+        src="https://cdn.prod.website-files.com/6864f039b26f4afedada6bc5/6864f039b26f4afedada6c30_about-ilust.svg"
+        alt="Walrus logo"
+        className="h-12 w-12 rounded-full border border-black/10 bg-white p-1 shadow-sm"
+      />
+    ),
   },
   {
     name: "Sui",
-    description: "High-throughput L1 delivering real-time UX for task updates.",
-    icon: Waves,
+    description: "High-throughput execution so updates feel instant.",
+    logo: (
+      <img
+        src="https://cdn.prod.website-files.com/6425f546844727ce5fb9e5ab/659d970f53d2997773cf1db1_emblem-sui-d.svg"
+        alt="Sui logo"
+        className="h-12 w-12 rounded-full border border-black/10 bg-white p-1 shadow-sm"
+      />
+    ),
+  },
+  {
+    name: "Seal",
+    description:
+      "Privacy-preserving compliance rails for cross-jurisdiction workflows.",
+    logo: (
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#071311] text-base font-semibold text-[#CAEAE5] shadow-inner shadow-black/20">
+        Seal
+      </span>
+    ),
+  },
+  {
+    name: "Move",
+    description: "Safe-by-design smart contracts that enforce task logic.",
+    logo: <MoveGlyph />,
   },
   {
     name: "Enoki",
-    description:
-      "Passkey account abstraction for human-friendly authentication.",
-    icon: Sparkles,
+    description: "Account abstraction toolkit powering seamless wallet flows.",
+    logo: (
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#071311] text-lg font-semibold text-[#CAEAE5]">
+        E
+      </span>
+    ),
+  },
+  {
+    name: "Passkeys",
+    description: "WebAuthn-native authentication for instant, secure sign-ins.",
+    logo: (
+      <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#071311]/10 bg-white text-lg font-semibold text-[#071311] shadow-inner shadow-black/10">
+        PK
+      </span>
+    ),
   },
 ];
 
-const contactLinks = [
+const socialLinks = [
   {
-    label: "Follow on X",
+    label: "Email",
+    href: "mailto:hello@taskos.io",
+    icon: Mail,
+    meta: "hello@taskos.io",
+  },
+  {
+    label: "Twitter / X",
     href: "https://x.com/",
     icon: Twitter,
-    handle: "@yourhandle",
+    meta: "@taskos.io",
   },
   {
-    label: "View on GitHub",
+    label: "GitHub",
     href: "https://github.com/",
     icon: Github,
-    handle: "task-manage",
-  },
-  {
-    label: "Email Us",
-    href: "mailto:hello@example.com",
-    icon: Mail,
-    handle: "hello@example.com",
+    meta: "taskos.io",
   },
 ];
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <LetterGlitch
-          glitchColors={["#2b4539", "#61dca3", "#61b3dc"]}
-          glitchSpeed={50}
-          centerVignette={false}
-          outerVignette={false}
-          smooth
-          characters="ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$&*()-_+=/[]{};:<>.,0123456789"
-        />
-      </div>
+    <main className="relative min-h-screen overflow-hidden bg-[#CAEAE5] text-[#071311]">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-60"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 20% 10%, rgba(255,255,255,0.55), transparent 50%), radial-gradient(circle at 80% 0%, rgba(255,255,255,0.4), transparent 45%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage:
+            "repeating-radial-gradient(circle at center, transparent 0, transparent 18px, rgba(255,255,255,0.4) 19px)",
+        }}
+      />
 
-      <header className="relative z-10">
-        <div className="mx-auto mt-6 w-full max-w-5xl px-4">
-          <nav className="relative flex items-center justify-between gap-4 rounded-4xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs uppercase tracking-[0.25em] text-white/70 backdrop-blur-lg shadow-[0_14px_40px_-22px_rgba(10,10,25,0.7)] md:px-6 md:py-3">
-            <div className="absolute inset-0 -z-10 rounded-4xl bg-[radial-gradient(circle_at_20%_-20%,rgba(102,214,255,0.28),transparent_55%),radial-gradient(circle_at_85%_120%,rgba(68,255,214,0.22),transparent_55%)]" />
+      <div className="relative flex min-h-screen flex-col">
+        <nav className="flex justify-center px-4 pt-6">
+          <NavBar />
+        </nav>
 
-            <Link
-              href="#home"
-              className="flex items-center gap-2 text-[0.55rem] font-semibold tracking-[0.38em] text-white/80 transition hover:text-white sm:text-[0.6rem]"
-            >
-              React Bits
-            </Link>
-
-            <div className="hidden items-center gap-2 rounded-full bg-black/20 px-2.5 py-1 text-[0.6rem] font-medium tracking-[0.18em] text-white/60 shadow-inner shadow-white/10 backdrop-blur md:flex">
-              {primaryNav.map((item) => {
-                const isActive = item.href === "#home";
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className={`rounded-full px-3 py-1 transition ${
-                      isActive
-                        ? "bg-white text-slate-900 shadow-[0_8px_22px_rgba(255,255,255,0.35)]"
-                        : "text-white/70 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center gap-2 text-[0.55rem] font-semibold tracking-[0.18em]">
-              <Link
-                href="#learn"
-                className="hidden rounded-full border border-white/15 px-4 py-1.5 text-white/70 backdrop-blur transition hover:border-white/40 hover:text-white sm:inline-flex"
-              >
-                Learn
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-full bg-white px-4 py-1.5 text-slate-900 shadow-[0_8px_20px_rgba(255,255,255,0.3)] transition hover:bg-white/85"
-              >
-                App
-              </Link>
-            </div>
-          </nav>
-        </div>
-      </header>
-
-      <section
-        id="home"
-        className="relative z-10 mx-auto flex min-h-[calc(100vh-120px)] max-w-4xl flex-col items-center justify-center px-6 pb-24 pt-12 text-center md:px-8"
-      >
-        {/* <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 backdrop-blur-md shadow-lg shadow-black/40">
-          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-          New Background
-        </div> */}
-
-        <h1 className="mt-8 text-4xl font-semibold leading-tight tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.65)] sm:text-5xl md:text-6xl lg:text-7xl">
-          Decentralized Task Manager
-        </h1>
-
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-full bg-white px-8 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-black transition hover:bg-white/90"
-          >
-            Get Started
-          </Link>
-          {/* <Link
-            href="#learn"
-            className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-white/80 backdrop-blur-md transition hover:border-white/40 hover:text-white"
-          >
-            Learn More
-          </Link> */}
-        </div>
-      </section>
-
-      <section
-        id="features"
-        className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24 text-center md:px-8"
-      >
-        <div className="mx-auto max-w-3xl">
-          <span className="text-xs font-semibold uppercase tracking-[0.4em] text-white/50">
-            Features
-          </span>
-          {/* {/* <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Everything you need to launch missions together
-          </h2> */}
-          {/* <p className="mt-4 text-sm text-white/65 sm:text-base">
-            Organize responsibilities, guarantee storage integrity, and reward
-            execution with a single, composable workflow.
-          </p>  */}
-        </div>
-
-        <div className="mt-12 grid gap-6 sm:grid-cols-2">
-          {featureHighlights.map(({ title, description, icon: Icon }) => (
-            <div
-              key={title}
-              className="group rounded-3xl border border-white/10 bg-[#111827] p-6 text-left shadow-[0_25px_60px_-40px_rgba(15,23,42,0.8)] transition hover:border-white/35 hover:bg-[#1a2640]"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0b1628] text-white shadow-inner shadow-black/40">
-                <Icon className="h-6 w-6" />
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-white">{title}</h3>
-              <p className="mt-3 text-sm text-white/70">{description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="tech"
-        className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24 md:px-8"
-      >
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Built with the best tools
-          </h2>
-        </div>
-
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {techStack.map(({ name, description, icon: Icon }) => (
-            <div
-              key={name}
-              className="rounded-3xl border border-white/10 bg-[#111827] p-6 shadow-[0_25px_60px_-40px_rgba(15,23,42,0.8)] transition hover:border-white/35 hover:bg-[#1a2640]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0b1628] text-white shadow-inner shadow-black/40">
-                  <Icon className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-semibold text-white">{name}</h3>
-              </div>
-              <p className="mt-4 text-sm text-white/70">{description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="contact"
-        className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-32 md:px-8"
-      >
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="text-xs font-semibold uppercase tracking-[0.4em] text-white/50">
-            Stay in the loop
-          </span>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            Subscribe & connect with the crew
-          </h2>
-          <p className="mt-4 text-sm text-white/65 sm:text-base">
-            Get launch updates, drop feedback, or jam with us on socials.
-          </p>
-        </div>
-
-        <div className="mt-12 flex flex-col gap-8 rounded-3xl border border-white/10 bg-[#111827] p-8 shadow-[0_30px_80px_-45px_rgba(15,23,42,0.9)] lg:flex-row lg:items-stretch lg:gap-10">
-          <form className="flex basis-1/2 flex-col justify-between gap-6">
-            <div>
-              <h3 className="text-left text-lg font-semibold text-white">
-                Be first to know
-              </h3>
-              <p className="mt-2 text-sm text-white/65">
-                Enter your email to receive updates on new drops, roadmap
-                progress, and upcoming live sessions.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                type="email"
-                required
-                placeholder="you@example.com"
-                className="h-12 flex-1 rounded-full border border-white/15 bg-[#0b1628] px-5 text-sm text-white placeholder-white/40 shadow-inner shadow-black/40 outline-none transition focus:border-white/60 focus:bg-[#111b2e]"
-              />
-              <button
-                type="submit"
-                className="h-12 rounded-full bg-white px-8 text-sm font-semibold uppercase tracking-[0.25em] text-slate-900 shadow-[0_10px_30px_rgba(255,255,255,0.35)] transition hover:bg-white/85"
-              >
-                Notify me
-              </button>
-            </div>
-            <p className="text-left text-xs text-white/40">
-              We respect your privacy. Unsubscribe any time.
+        <section
+          id="home"
+          className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center gap-16 px-6 pb-24 pt-20 text-center md:flex-row md:items-end md:justify-between md:text-left"
+        >
+          <div className="flex max-w-2xl flex-col items-center gap-6 md:items-start">
+            <h1 className="text-4xl font-semibold leading-tight md:text-5xl lg:text-6xl">
+              All-in-one on-chain task management
+            </h1>
+            <p className="max-w-xl text-base text-[#071311]/80 md:text-lg">
+              Draft tasks, sync contributors, and release rewards in a single
+              workflow. Powered by Walrus decentralized storage, Sui speed, and
+              Move smart contracts.
             </p>
-          </form>
-
-          <div className="basis-1/2 space-y-4">
-            <h3 className="text-lg font-semibold text-white">
-              Connect with the builders
-            </h3>
-            <div className="grid gap-4">
-              {contactLinks.map(({ label, href, icon: Icon, handle }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  className="group flex items-center justify-between rounded-2xl border border-white/10 bg-[#0d1a2f] px-5 py-4 text-left text-sm text-white/70 transition hover:border-white/30 hover:bg-[#15223b] hover:text-white"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#14213a] text-white transition group-hover:bg-[#1f2f50]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">{label}</p>
-                      <p className="text-xs text-white/60">{handle}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs uppercase tracking-[0.3em] text-white/40 group-hover:text-white/70">
-                    Connect
-                  </span>
-                </Link>
-              ))}
+            <div className="flex flex-col items-center gap-4 sm:flex-row md:items-start">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center rounded-full bg-[#071311] px-8 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-[#CAEAE5] transition hover:bg-[#0c2622]"
+              >
+                Launch App
+              </Link>
+              <Link
+                href="#features"
+                className="inline-flex items-center gap-2 rounded-full border border-[#071311] px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] transition hover:bg-[#071311] hover:text-[#CAEAE5]"
+              >
+                Explore Features
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="flex w-full flex-col gap-4 rounded-3xl border border-white/50 bg-white/70 p-6 text-left shadow-lg backdrop-blur-sm md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-[#071311]/70">
+                  Total tasks planned
+                </p>
+                <p className="text-2xl font-semibold">10,888 tasks</p>
+              </div>
+              <div className="h-px w-full bg-[#071311]/10 md:h-12 md:w-px" />
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-[#071311]/70">
+                  Teams shipped with TaskOS
+                </p>
+                <p className="text-2xl font-semibold">88 active teams</p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+          <div className="relative hidden max-w-sm flex-1 items-end justify-end md:flex">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full border border-[#071311]/10 bg-white/60 blur-0" />
+            <div className="relative w-full rounded-4xl border border-white/70 bg-white/80 p-6 shadow-2xl backdrop-blur">
+              <div className="mb-6">
+                <p className="text-xs uppercase tracking-[0.3em] text-[#071311]/60">
+                  Upcoming sprint
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-[#071311]">
+                  Sui Mainnet Launch
+                </h2>
+              </div>
+              <ul className="space-y-4 text-left">
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-[#071311]" />
+                  <div>
+                    <p className="font-semibold text-[#071311]">
+                      Publish contracts to Walrus
+                    </p>
+                    <p className="text-sm text-[#071311]/70">
+                      Autogenerated checklist locked with Move guard rails.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-[#071311]" />
+                  <div>
+                    <p className="font-semibold text-[#071311]">
+                      Sync community prize pool
+                    </p>
+                    <p className="text-sm text-[#071311]/70">
+                      2,500 SUI staked and ready to unlock on completion.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-[#071311]" />
+                  <div>
+                    <p className="font-semibold text-[#071311]">
+                      Share rollout brief
+                    </p>
+                    <p className="text-sm text-[#071311]/70">
+                      AI summary auto-shared with 42 contributors.
+                    </p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="mx-auto w-full max-w-6xl px-6 pb-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="mt-4 text-3xl font-semibold text-[#071311] md:text-4xl">
+              Ship faster with a workflow that understands teams
+            </h2>
+          </div>
+          <div className="mt-12 grid gap-6 md:grid-cols-2">
+            {featureItems.map(({ title, description, icon: Icon }) => (
+              <div
+                key={title}
+                className="group rounded-3xl border border-white/70 bg-white/80 p-6 text-left shadow-lg transition hover:-translate-y-1 hover:shadow-xl"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#071311] text-[#CAEAE5] shadow-inner shadow-black/20">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <h3 className="mt-6 text-xl font-semibold text-[#071311]">
+                  {title}
+                </h3>
+                <p className="mt-3 text-sm text-[#071311]/75 md:text-base">
+                  {description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          id="tech"
+          className="mx-auto w-full max-w-6xl px-6 pb-24 text-center md:text-left"
+        >
+          <div className="mx-auto max-w-3xl text-center md:text-left">
+            <h2 className="mt-4 text-3xl font-semibold text-[#071311] md:text-4xl">
+              Built natively on Sui Stack, secured by Move
+            </h2>
+          </div>
+          <div className="mt-12 grid gap-6 md:grid-cols-2">
+            {techStack.map(({ name, description, logo }) => (
+              <div
+                key={name}
+                className="flex flex-col gap-4 rounded-3xl border border-white/70 bg-white/80 p-6 shadow-lg transition hover:-translate-y-1 hover:shadow-xl"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#071311]/10 bg-white shadow-inner shadow-black/10">
+                    {logo}
+                  </div>
+                  <h3 className="text-lg font-semibold text-[#071311]">
+                    {name}
+                  </h3>
+                </div>
+                <p className="text-sm text-[#071311]/75 md:text-base">
+                  {description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          id="contact"
+          className="mx-auto w-full max-w-6xl px-6 pb-28 md:pb-32"
+        >
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="mt-4 text-3xl font-semibold text-[#071311] md:text-4xl">
+              Subscribe and connect with the builders
+            </h2>
+          </div>
+
+          <div className="mt-12 flex flex-col gap-8 rounded-4xl border border-white/70 bg-white/85 p-8 shadow-xl backdrop-blur md:flex-row md:gap-10 md:p-10">
+            <div className="flex basis-1/2 flex-col gap-6">
+              <div>
+                <h3 className="text-lg font-semibold text-[#071311]">
+                  Join the newsletter
+                </h3>
+                <p className="mt-2 text-sm text-[#071311]/75 md:text-base">
+                  Product changelogs, feature previews, and governance proposals
+                  delivered every Thursday.
+                </p>
+              </div>
+              <form className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  className="h-12 flex-1 rounded-full border border-[#071311]/15 bg-white px-5 text-sm text-[#071311] outline-none transition focus:border-[#071311]/40 focus:ring-2 focus:ring-[#071311]/20"
+                />
+                <button
+                  type="submit"
+                  className="h-12 rounded-full bg-[#071311] px-6 text-sm font-semibold uppercase tracking-[0.25em] text-[#CAEAE5] transition hover:bg-[#0c2622]"
+                >
+                  Notify me
+                </button>
+              </form>
+              <p className="text-xs text-[#071311]/60">
+                No spam—just the updates TaskOS teams ask for. Unsubscribe
+                anytime.
+              </p>
+            </div>
+
+            <div className="basis-1/2 space-y-4">
+              <h3 className="text-lg font-semibold text-[#071311]">
+                Connect with the team
+              </h3>
+              <div className="space-y-3">
+                {socialLinks.map(({ label, href, icon: Icon, meta }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    className="group flex items-center justify-between rounded-3xl border border-[#071311]/10 bg-white px-5 py-4 text-left transition hover:-translate-y-0.5 hover:border-[#071311]/30 hover:shadow-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#071311] text-[#CAEAE5] shadow-inner shadow-black/20">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="font-semibold text-[#071311]">{label}</p>
+                        <p className="text-xs text-[#071311]/60">{meta}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#071311]/40 group-hover:text-[#071311]/70">
+                      Reach out
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
