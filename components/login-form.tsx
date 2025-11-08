@@ -12,19 +12,12 @@ import {
 import "@mysten/dapp-kit/dist/index.css";
 
 import {
-  createNetworkConfig,
-  SuiClientProvider,
-  WalletProvider,
   useCurrentAccount,
   ConnectButton,
-  useSuiClientContext,
   useSignAndExecuteTransaction,
 } from "@mysten/dapp-kit";
 import type { WalletAccount } from "@mysten/wallet-standard";
-import { getFullnodeUrl } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { registerEnokiWallets } from "@mysten/enoki";
 import { useEffect, useState } from "react";
 import {
   BrowserPasskeyProvider,
@@ -32,41 +25,6 @@ import {
   PasskeyKeypair,
 } from "@mysten/sui/keypairs/passkey";
 import { useWalletStorage } from "@/hooks/use-wallet-storage";
-
-const { networkConfig } = createNetworkConfig({
-  testnet: { url: getFullnodeUrl("testnet") },
-  mainnet: { url: getFullnodeUrl("mainnet") },
-});
-
-const queryClient = new QueryClient();
-
-function RegisterEnokiWallets() {
-  const { client, network } = useSuiClientContext();
-
-  useEffect(() => {
-    if (!client || !network) return;
-
-    const { unregister } = registerEnokiWallets({
-      apiKey: "enoki_public_a56d0d2eae9d947356fa5bcb68febd2f",
-      providers: {
-        google: {
-          clientId:
-            "973280063155-rkuse0cisqcvvvnabpl56uov0pv3o2fj.apps.googleusercontent.com",
-          redirectUrl: window.location.origin,
-          extraParams: {
-            prompt: "select_account",
-          },
-        },
-      },
-      client,
-      network: network as "testnet" | "mainnet",
-    });
-
-    return unregister;
-  }, [client, network]);
-
-  return null;
-}
 
 interface WalletConnectedSectionProps {
   currentAccount: WalletAccount;
@@ -168,6 +126,10 @@ function EnhancedLoginForm() {
       const provider = new BrowserPasskeyProvider("Task Manage", {
         rpName: "Task Manage",
         rpId: window.location.hostname,
+        authenticatorSelection: {
+          residentKey: "required",
+          userVerification: "preferred",
+        },
       } as BrowserPasswordProviderOptions);
 
       // Try to recover existing passkey first
@@ -347,15 +309,8 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
-        <RegisterEnokiWallets />
-        <WalletProvider>
-          <div className={cn("flex flex-col gap-6", className)} {...props}>
-            <EnhancedLoginForm />
-          </div>
-        </WalletProvider>
-      </SuiClientProvider>
-    </QueryClientProvider>
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <EnhancedLoginForm />
+    </div>
   );
 }
