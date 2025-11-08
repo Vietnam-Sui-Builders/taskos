@@ -19,9 +19,9 @@ Create a transparent, secure, and incentive-driven task management platform that
 ### 📝 Testnet Contract Addresses
 
 ```bash
-NEXT_PUBLIC_PACKAGE_ID=0xd9a9971440976714e8b9fb6bc5f1aefbc9fca252612b1275c3e33d3c2774fec0
-NEXT_PUBLIC_TASKS_REGISTRY_ID=0xed26a9cf9f93ac8f017ecd9853a91de5238dc71fdcccb940ee8f5ee2b100c1c9
-NEXT_PUBLIC_VERSION_ID=0xd7f77b5da32186ae2f3fefaf55947702ea9338335eb7cf186135870affebe64b
+NEXT_PUBLIC_PACKAGE_ID=0x3217406cbbda5799dba5af7b4d3f62764e06b4f98cf9e972759ffadc015eec30
+NEXT_PUBLIC_TASKS_REGISTRY_ID=0xa9ed5d827be92e111ba6d8af22a4184c1bce8cb8bc028de0cc17edcc17423641
+NEXT_PUBLIC_VERSION_ID=0x1a9dcd1b540bd60f1efdabbba96990761fc68740b5eac9339706f267351e6e6f
 ```
 
 **Explorer Links:**
