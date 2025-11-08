@@ -72,15 +72,12 @@ export const TaskManager = () => {
 
     return (
         <Tabs defaultValue="my-tasks" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
                 <TabsTrigger value="my-tasks" className="cursor-pointer">
                     My Tasks
                 </TabsTrigger>
                 <TabsTrigger value="shared-tasks" className="cursor-pointer">
                     Shared Tasks
-                </TabsTrigger>
-                <TabsTrigger value="create" className="cursor-pointer">
-                    Create Task
                 </TabsTrigger>
             </TabsList>
 
