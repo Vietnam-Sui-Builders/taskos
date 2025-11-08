@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { CustomBtn } from "./connect-button";
-import { AddTaskDialog } from "./create-task";
+import { CreateTask } from "./task-manager/create-task";
 
 const data = {
   user: {
@@ -158,7 +158,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
-          <AddTaskDialog onAddTask={() => {}} />
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
@@ -173,6 +172,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        <div className="px-2 w-full h-8">
+          <CreateTask onAddTask={() => {}} />
+        </div>
         <NavMain items={data.navMain} />
         {/* <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
