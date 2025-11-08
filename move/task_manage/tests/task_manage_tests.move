@@ -345,7 +345,7 @@ fun test_add_and_remove_tag() {
 
         let initial_count = vector::length(&task_manage::get_tags(&task));
 
-        task_manage::add_tag(&version, &mut task, b"new-tag", &clock, ctx);
+        task_manage::add_tag(&version, &mut task, string::utf8(b"new-tag"), &clock, ctx);
         assert!(vector::length(&task_manage::get_tags(&task)) == initial_count + 1, 0);
 
         task_manage::remove_tag(&version, &mut task, 0, &clock, ctx);
@@ -732,7 +732,8 @@ fun test_add_content() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_content(&version, &mut task, b"blob_id_12345", &clock, ctx);
+        let blob_id = option::some(string::utf8(b"blob_id_12345"));
+        task_manage::add_content(&version, &mut task, blob_id, &clock, ctx);
 
         let content_blob_id = task_manage::get_content_blob_id(&task);
         assert!(option::is_some(&content_blob_id), 0);
@@ -770,7 +771,11 @@ fun test_add_files() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        let file_ids = vector[b"file_1", b"file_2", b"file_3"];
+        let file_ids = vector[
+            string::utf8(b"file_1"),
+            string::utf8(b"file_2"),
+            string::utf8(b"file_3"),
+        ];
         task_manage::add_files(&version, &mut task, file_ids, &clock, ctx);
 
         let files = task_manage::get_file_blob_ids(&task);
@@ -918,7 +923,13 @@ fun test_add_comment() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&version, &mut task, b"This is my first comment", &clock, ctx);
+        task_manage::add_comment(
+            &version,
+            &mut task,
+            string::utf8(b"This is my first comment"),
+            &clock,
+            ctx,
+        );
 
         let comments = task_manage::get_comments(&task);
         assert!(vector::length(&comments) == 1, 0);
@@ -955,7 +966,13 @@ fun test_edit_comment() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&version, &mut task, b"Original comment", &clock, ctx);
+        task_manage::add_comment(
+            &version,
+            &mut task,
+            string::utf8(b"Original comment"),
+            &clock,
+            ctx,
+        );
 
         ts::return_shared(version);
         ts::return_shared(clock);
@@ -969,7 +986,14 @@ fun test_edit_comment() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::edit_comment(&version, &mut task, 0, b"Edited comment", &clock, ctx);
+        task_manage::edit_comment(
+            &version,
+            &mut task,
+            0,
+            string::utf8(b"Edited comment"),
+            &clock,
+            ctx,
+        );
 
         let comments = task_manage::get_comments(&task);
         assert!(vector::length(&comments) == 1, 0);
@@ -1006,7 +1030,13 @@ fun test_delete_comment_by_author() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&version, &mut task, b"Comment to delete", &clock, ctx);
+        task_manage::add_comment(
+            &version,
+            &mut task,
+            string::utf8(b"Comment to delete"),
+            &clock,
+            ctx,
+        );
         assert!(vector::length(&task_manage::get_comments(&task)) == 1, 0);
 
         task_manage::delete_comment(&version, &mut task, 0, ctx);
@@ -1060,7 +1090,13 @@ fun test_delete_comment_by_owner() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&version, &mut task, b"Comment by USER_B", &clock, ctx);
+        task_manage::add_comment(
+            &version,
+            &mut task,
+            string::utf8(b"Comment by USER_B"),
+            &clock,
+            ctx,
+        );
 
         ts::return_shared(version);
         ts::return_shared(clock);
@@ -1126,7 +1162,7 @@ fun test_viewer_cannot_add_comment() {
         let clock = ts::take_shared<Clock>(&scenario);
         let ctx = ts::ctx(&mut scenario);
 
-        task_manage::add_comment(&version, &mut task, b"Should fail", &clock, ctx); // Should fail
+        task_manage::add_comment(&version, &mut task, string::utf8(b"Should fail"), &clock, ctx); // Should fail
 
         ts::return_shared(version);
         ts::return_shared(clock);
@@ -2628,7 +2664,7 @@ fun test_version_check_on_all_operations() {
         );
 
         // Add comment
-        task_manage::add_comment(&version, &mut task, b"Test comment", &clock, ctx);
+        task_manage::add_comment(&version, &mut task, string::utf8(b"Test comment"), &clock, ctx);
 
         // Add user with role
         task_manage::add_user_with_role(&version, &mut task, USER_B, role_editor(), &clock, ctx);
