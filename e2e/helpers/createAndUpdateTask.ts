@@ -26,7 +26,7 @@ export const createAndUpdateTask =
                 tx.pure.u8(2),
                 tx.pure.string("Study"),
                 tx.pure.vector("string", ["Sui"]),
-                tx.object("0x6"),
+                tx.object.clock,
                 tx.object(ENV.TASKS_REGISTRY_ID),
             ],
             typeArguments: [],
@@ -42,7 +42,7 @@ export const createAndUpdateTask =
                     "Updated Task #" + randomNum.toString().slice(2, 9)
                 ),
                 tx.pure.string("Join SuiHub bootcamp on 8th November 2025"),
-                tx.object("0x6"),
+                tx.object.clock,
             ],
             typeArguments: [],
         });
@@ -53,7 +53,7 @@ export const createAndUpdateTask =
                 tx.object(ENV.VERSION_ID),
                 task,
                 tx.pure.u8(4),
-                tx.object("0x6"),
+                tx.object.clock,
             ],
             typeArguments: [],
         });
@@ -64,7 +64,7 @@ export const createAndUpdateTask =
                 tx.object(ENV.VERSION_ID),
                 task,
                 tx.pure(bcs.option(bcs.u64()).serialize("1762599600")),
-                tx.object("0x6"),
+                tx.object.clock,
             ],
             typeArguments: [],
         });
@@ -75,7 +75,7 @@ export const createAndUpdateTask =
                 tx.object(ENV.VERSION_ID),
                 task,
                 tx.pure.u8(1),
-                tx.object("0x6"),
+                tx.object.clock,
                 tx.object(ENV.TASKS_REGISTRY_ID),
             ],
             typeArguments: [],
@@ -87,7 +87,7 @@ export const createAndUpdateTask =
                 tx.object(ENV.VERSION_ID),
                 task,
                 tx.pure.string("Technical"),
-                tx.object("0x6"),
+                tx.object.clock,
             ],
             typeArguments: [],
         });
@@ -98,7 +98,7 @@ export const createAndUpdateTask =
                 tx.object(ENV.VERSION_ID),
                 task,
                 tx.pure.string("Blockchain"),
-                tx.object("0x6"),
+                tx.object.clock,
             ],
             typeArguments: [],
         });
@@ -109,7 +109,7 @@ export const createAndUpdateTask =
                 tx.object(ENV.VERSION_ID),
                 task,
                 tx.pure.u64(1),
-                tx.object("0x6"),
+                tx.object.clock,
             ],
             typeArguments: [],
         });
