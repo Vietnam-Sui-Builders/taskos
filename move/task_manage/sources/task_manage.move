@@ -6,6 +6,7 @@
 /// - Categories and tags
 /// - Walrus storage integration for encrypted content
 /// - Seal integration for identity-based encryption
+/// - TaskRegistry for on-chain querying by status
 module task_manage::task_manage;
 
 use std::string::{Self, String};
@@ -110,6 +111,29 @@ public struct Comment has copy, drop, store {
     content: String,
     created_at: u64,
     edited_at: u64,
+}
+
+// ==================== Registry for On-Chain Query ====================
+
+/// Shared registry to index tasks by status for on-chain querying
+public struct TaskRegistry has key {
+    id: UID,
+    tasks_by_status: Table<u8, vector<ID>>, // Key: status (u8), Value: list of Task IDs
+}
+
+/// Entry function to initialize and share the registry (call once after deploy)
+entry fun init_registry(ctx: &mut TxContext) {
+    let mut registry = TaskRegistry {
+        id: object::new(ctx),
+        tasks_by_status: table::new(ctx),
+    };
+    // Initialize empty vectors for each status
+    table::add(&mut registry.tasks_by_status, STATUS_TODO, vector::empty<ID>());
+    table::add(&mut registry.tasks_by_status, STATUS_IN_PROGRESS, vector::empty<ID>());
+    table::add(&mut registry.tasks_by_status, STATUS_COMPLETED, vector::empty<ID>());
+    table::add(&mut registry.tasks_by_status, STATUS_ARCHIVED, vector::empty<ID>());
+
+    transfer::share_object(registry);
 }
 
 // ==================== Events ====================
@@ -275,6 +299,24 @@ fun init_deposits(task: &mut Task, ctx: &mut TxContext) {
     };
 }
 
+// Helper to add task ID to registry
+fun add_to_registry(registry: &mut TaskRegistry, task_id: ID, status: u8) {
+    let status_list = table::borrow_mut(&mut registry.tasks_by_status, status);
+    if (!vector::contains(status_list, &task_id)) {
+        // To avoid duplicate if needed
+        vector::push_back(status_list, task_id);
+    };
+}
+
+// Helper to remove task ID from registry
+fun remove_from_registry(registry: &mut TaskRegistry, task_id: ID, status: u8) {
+    let status_list = table::borrow_mut(&mut registry.tasks_by_status, status);
+    let (found, index) = vector::index_of(status_list, &task_id);
+    if (found) {
+        vector::remove(status_list, index);
+    };
+}
+
 // ==================== Task CRUD Operations ====================
 
 /// Create a new task
@@ -286,6 +328,7 @@ public fun create_task(
     category: vector<u8>,
     tags: vector<vector<u8>>,
     clock: &Clock,
+    registry: &mut TaskRegistry,
     ctx: &mut TxContext,
 ): Task {
     let task_title = string::utf8(title);
@@ -328,10 +371,14 @@ public fun create_task(
         tags: task_tags,
     };
 
-    let task_id = object::uid_to_address(&task.id);
+    let task_id_addr = object::uid_to_address(&task.id);
+    let task_id = object::id(&task); // ID for registry
+
+    // Add to registry
+    add_to_registry(registry, task_id, STATUS_TODO);
 
     event::emit(TaskCreated {
-        task_id,
+        task_id: task_id_addr,
         creator: tx_context::sender(ctx),
         title: task.title,
         category: task.category,
@@ -397,13 +444,28 @@ public fun update_due_date(task: &mut Task, due_date: u64, clock: &Clock, ctx: &
 }
 
 /// Update task status
-public fun update_status(task: &mut Task, status: u8, clock: &Clock, ctx: &mut TxContext) {
+public fun update_status(
+    task: &mut Task,
+    status: u8,
+    clock: &Clock,
+    registry: &mut TaskRegistry,
+    ctx: &mut TxContext,
+) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     validate_status(status);
 
+    let old_status = task.status;
+    let task_id = object::id(task);
+
+    // Remove from old status in registry
+    remove_from_registry(registry, task_id, old_status);
+
     task.status = status;
     task.updated_at = clock::timestamp_ms(clock);
+
+    // Add to new status in registry
+    add_to_registry(registry, task_id, status);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -467,15 +529,29 @@ public fun remove_tag(task: &mut Task, tag_index: u64, clock: &Clock, ctx: &mut 
 }
 
 /// Archive task (soft delete)
-public fun archive_task(task: &mut Task, clock: &Clock, ctx: &mut TxContext) {
+public fun archive_task(
+    task: &mut Task,
+    clock: &Clock,
+    registry: &mut TaskRegistry,
+    ctx: &mut TxContext,
+) {
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
 
     // Refund all deposits before archiving
     refund_deposits(task, ctx);
 
+    let old_status = task.status;
+    let task_id = object::id(task);
+
+    // Remove from old status
+    remove_from_registry(registry, task_id, old_status);
+
     task.status = STATUS_ARCHIVED;
     task.updated_at = clock::timestamp_ms(clock);
+
+    // Add to archived
+    add_to_registry(registry, task_id, STATUS_ARCHIVED);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -484,14 +560,18 @@ public fun archive_task(task: &mut Task, clock: &Clock, ctx: &mut TxContext) {
 }
 
 /// Delete task (hard delete) - only owner can delete
-public fun delete_task(mut task: Task, ctx: &mut TxContext) {
+public fun delete_task(mut task: Task, registry: &mut TaskRegistry, ctx: &mut TxContext) {
     let sender = tx_context::sender(ctx);
     assert!(task.creator == sender, ENotOwner);
 
-    let task_id = object::uid_to_address(&task.id);
+    let task_id_addr = object::uid_to_address(&task.id);
+    let task_id = object::id(&task);
+
+    // Remove from registry
+    remove_from_registry(registry, task_id, task.status);
 
     event::emit(TaskDeleted {
-        task_id,
+        task_id: task_id_addr,
         deleted_by: sender,
     });
 
@@ -540,6 +620,24 @@ public fun delete_task(mut task: Task, ctx: &mut TxContext) {
     } = task;
 
     object::delete(id);
+}
+
+// ==================== Registry Getters for On-Chain Query ====================
+
+/// Get list of task IDs by status (view function for on-chain/off-chain query)
+public fun get_tasks_by_status(registry: &TaskRegistry, status: u8): vector<ID> {
+    if (!table::contains(&registry.tasks_by_status, status)) {
+        return vector::empty<ID>()
+    };
+    *table::borrow(&registry.tasks_by_status, status)
+}
+
+/// Get count of tasks by status
+public fun get_task_count_by_status(registry: &TaskRegistry, status: u8): u64 {
+    if (!table::contains(&registry.tasks_by_status, status)) {
+        return 0
+    };
+    vector::length(table::borrow(&registry.tasks_by_status, status))
 }
 
 // ==================== Access Control Functions ====================

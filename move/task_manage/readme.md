@@ -83,9 +83,16 @@
 - ✅ Priority, Status, Role range checks
 - ✅ Reward: positive amount only, no deposit after completion
 
-### 11. **Comprehensive Unit Tests** (`task_manage_tests.move`)
+### 11. **Registry for On-Chain Querying**
 
-- ✅ 45+ test cases covering:
+- ✅ `init_registry` - Initialize shared TaskRegistry
+- ✅ `get_tasks_by_status` - Get list of task IDs by status
+- ✅ `get_task_count_by_status` - Get count of tasks by status
+- ✅ Internal helpers: `add_to_registry`, `remove_from_registry`
+
+### 12. **Comprehensive Unit Tests** (`task_manage_tests.move`)
+
+- ✅ 46+ test cases covering:
   - Task CRUD operations
   - Access control with roles
   - Comments system
@@ -93,6 +100,7 @@
   - Validation & error cases
   - Edge cases and security
   - SUI Reward System (deposits, assignee, approval, refunds, cancellations, failures)
+  - Registry indexing (status updates and queries)
 
 ## 🎯 Improvements Compared to the Old Smart Contract
 
@@ -103,8 +111,9 @@
 5. **Better validation**: Length limits, range checks
 6. **Comprehensive events**: Track all changes
 7. **Better code organization**: Clear sections, helper functions
-8. **Full test coverage**: 45+ unit tests
+8. **Full test coverage**: 46+ unit tests
 9. **SUI Reward System**: Integrated bounty/reward mechanism with deposits, assignee, approval, and refunds
+10. **On-Chain Querying**: Added TaskRegistry for efficient status-based queries
 
 ## 📝 Notes When Using
 
@@ -112,3 +121,4 @@
 - Creator always has Owner role, cannot be removed
 - ETaskNotFound constant not used yet but kept for future use
 - Rewards: Only Owners can deposit/set assignee/approve/cancel; refunds handled automatically on cancel/archive/delete; total balance held centrally with individual tracking for refunds
+- Registry: Shared object for on-chain querying; must pass &mut TaskRegistry to create/update_status/archive/delete functions
