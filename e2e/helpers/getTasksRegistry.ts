@@ -6,10 +6,7 @@ interface TasksRegistry {
     status: number;
     ids: string[];
 }
-/**
- * Gets the Heroes ids in the Hero Registry.
- * We need to get the Hero Registry object, and return the contents of the ids vector, along with the counter field.
- */
+
 export const getTasksRegistry = async (
     status: number
 ): Promise<TasksRegistry> => {
