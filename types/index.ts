@@ -39,6 +39,8 @@ export interface TaskItem {
     category?: string;
     tags?: string[];
     assignee?: string;
+    content_blob_id?: string;
+    file_blob_ids?: string[];
 }
 
 export interface SharedTaskItem {

@@ -10,10 +10,12 @@ import {
     DialogDescription,
     DialogClose,
 } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatDueDate, getPriorityLabel, isOverdue } from "@/helpers";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { Hash, Copy, ExternalLink } from "lucide-react";
+import { Hash, Copy, ExternalLink, Eye, FileText, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { getWalrusBlob } from "@/utils/walrus";
 
 interface TaskViewerProps {
     taskId: string;
@@ -21,11 +23,7 @@ interface TaskViewerProps {
 
 export function TaskViewer({ taskId }: TaskViewerProps) {
     const [decryptedContent, setDecryptedContent] = useState<string>("");
-    const [decryptedFiles, setDecryptedFiles] = useState<
-        Array<{ name: string; url: string; type: string }>
-    >([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [isLoadingContent, setIsLoadingContent] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     // Fetch task from blockchain
@@ -103,15 +101,6 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
     const priorityInfo = getPriorityLabel(task.priority);
     const overdueStatus = isOverdue(task.due_date, task.is_completed);
 
-    const copyToClipboard = async (text: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            alert("Copied to clipboard!");
-        } catch (err) {
-            console.error("Failed to copy:", err);
-        }
-    };
-
     const getStatusLabel = (status: number) => {
         switch (status) {
             case 0: return { label: "To Do", color: "bg-gray-500" };
@@ -124,7 +113,42 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
 
     const statusInfo = getStatusLabel(task.status);
 
+    const copyToClipboard = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            toast.success("Copied to clipboard!");
+        } catch (err) {
+            console.error("Failed to copy:", err);
+            toast.error("Failed to copy");
+        }
+    };
+
+    const handleViewContent = async () => {
+        if (!task.content_blob_id) return;
+        
+        setIsLoadingContent(true);
+        setDecryptedContent("");
+        
+        try {
+            console.log("[TaskViewer] Fetching content blob:", task.content_blob_id);
+            const contentBytes = await getWalrusBlob(task.content_blob_id);
+            const textDecoder = new TextDecoder();
+            const contentText = textDecoder.decode(contentBytes);
+            setDecryptedContent(contentText);
+            setIsDialogOpen(true);
+            console.log("[TaskViewer] Content loaded successfully");
+        } catch (err) {
+            console.error("Error fetching content:", err);
+            toast.error("Failed to load content", {
+                description: err instanceof Error ? err.message : "Unknown error"
+            });
+        } finally {
+            setIsLoadingContent(false);
+        }
+    };
+
     return (
+        <>
         <Card
             className={`p-4 ${
                 overdueStatus ? "border-2 border-red-500 bg-red-50" : ""
@@ -294,140 +318,109 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                         </div>
                     )}
 
-                    {/* Content and Files Info */}
-                    {(task.content_blob_id || task.file_blob_ids.length > 0) && (
-                        <div className="border rounded-lg p-3 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
-                                    Encrypted Content
-                                </span>
+                    {/* Content Blob ID with View Button */}
+                    {task.content_blob_id && (
+                        <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <span className="text-sm font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                                        Content Blob ID
+                                    </span>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleViewContent}
+                                    disabled={isLoadingContent}
+                                    className="border-blue-300 dark:border-blue-700"
+                                >
+                                    {isLoadingContent ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View Content
+                                        </>
+                                    )}
+                                </Button>
                             </div>
-                            <div className="flex flex-col gap-1.5 text-sm">
-                                {task.content_blob_id && (
-                                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                                        <span className="text-lg">📄</span>
-                                        <span>Text content available</span>
-                                    </div>
-                                )}
-                                {task.file_blob_ids.length > 0 && (
-                                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                                        <span className="text-lg">📎</span>
-                                        <span>{task.file_blob_ids.length} file(s) attached</span>
-                                    </div>
-                                )}
+                            <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded border">
+                                <code className="text-xs font-mono text-gray-800 dark:text-gray-200 flex-1 break-all">
+                                    {task.content_blob_id}
+                                </code>
+                                <div className="flex gap-1 shrink-0">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => copyToClipboard(task.content_blob_id)}
+                                        className="h-7 px-2"
+                                        title="Copy Blob ID"
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        asChild
+                                        className="h-7 px-2"
+                                        title="View on Walruscan"
+                                    >
+                                        <a
+                                            href={`https://walruscan.com/testnet/blob/${task.content_blob_id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
-
-                {/* --- Decrypt Button --- */}
-                <Button
-                    disabled={
-                        isLoading ||
-                        (!task.content_blob_id &&
-                            task.file_blob_ids.length === 0)
-                    }
-                >
-                    {isLoading
-                        ? "Decrypting content..."
-                        : "View Content & Download Files"}
-                </Button>
-
-                {/* --- Error Box --- */}
-                {error && (
-                    <div className="p-3 bg-red-100 rounded-md">
-                        <p className="text-sm text-red-600 whitespace-pre-line">
-                            {error}
-                        </p>
-                    </div>
-                )}
-
-                {/* --- Dialog --- */}
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="max-w-3xl">
-                        <DialogTitle>Decrypted Task Content</DialogTitle>
-                        <DialogDescription>
-                            {decryptedContent || decryptedFiles.length > 0 ? (
-                                <div className="flex flex-col gap-4">
-                                    {/* --- Decrypted Text --- */}
-                                    {decryptedContent && (
-                                        <div>
-                                            <strong>Content:</strong>
-                                            <div className="p-3 bg-gray-50 rounded-md mt-2">
-                                                <p className="whitespace-pre-wrap">
-                                                    {decryptedContent}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* --- Decrypted Files --- */}
-                                    {decryptedFiles.length > 0 && (
-                                        <div>
-                                            <strong>
-                                                Files ({decryptedFiles.length}):
-                                            </strong>
-                                            <div className="flex flex-col gap-2 mt-2">
-                                                {decryptedFiles.map(
-                                                    (file, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className="flex justify-between items-center p-2 bg-gray-50 rounded-md"
-                                                        >
-                                                            <p>{file.name}</p>
-                                                            <div className="flex gap-2">
-                                                                {file.type.startsWith(
-                                                                    "image/"
-                                                                ) && (
-                                                                    <Button
-                                                                        variant="secondary"
-                                                                        size="sm"
-                                                                        onClick={() =>
-                                                                            window.open(
-                                                                                file.url,
-                                                                                "_blank"
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        View
-                                                                    </Button>
-                                                                )}
-                                                                <Button
-                                                                    size="sm"
-                                                                    asChild
-                                                                >
-                                                                    <a
-                                                                        href={
-                                                                            file.url
-                                                                        }
-                                                                        download={
-                                                                            file.name
-                                                                        }
-                                                                    >
-                                                                        Download
-                                                                    </a>
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <p>No content found to decrypt.</p>
-                            )}
-                        </DialogDescription>
-
-                        <div className="flex justify-end gap-3 mt-4">
-                            <DialogClose asChild>
-                                <Button variant="secondary">Close</Button>
-                            </DialogClose>
-                        </div>
-                    </DialogContent>
-                </Dialog>
             </CardContent>
         </Card>
+
+        {/* Content View Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Content Preview
+                </DialogTitle>
+                <DialogDescription asChild>
+                    <div className="space-y-4 mt-4">
+                        {decryptedContent ? (
+                            <div className="space-y-3">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 max-h-96 overflow-y-auto">
+                                    <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 font-mono">
+                                        {decryptedContent}
+                                    </pre>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    {decryptedContent.length} characters • {new Blob([decryptedContent]).size} bytes
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                <p>No content to display</p>
+                            </div>
+                        )}
+                    </div>
+                </DialogDescription>
+
+                <div className="flex justify-end gap-3 mt-4 pt-4 border-t">
+                    <DialogClose asChild>
+                        <Button variant="secondary">Close</Button>
+                    </DialogClose>
+                </div>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
