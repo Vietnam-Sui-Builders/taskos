@@ -8,7 +8,7 @@ import { formatAddress } from "@mysten/sui/utils";
 import { useCallback, useState } from "react";
 import { Button } from "./ui/button";
 import { Copy, LogOut, User, Wallet } from "lucide-react";
-import "@mysten/dapp-kit/dist/index.css";
+// import "@mysten/dapp-kit/dist/index.css";
 import { cn } from "@/lib/utils";
 import {
     DropdownMenu,
@@ -83,13 +83,16 @@ export function CustomBtn({ className }: CustomBtnProps) {
         <ConnectModal
             trigger={
                 <Button
+                    asChild
                     className={cn(
                         "w-full mt-2 md:mt-0 md:w-40 md:inline-flex gradient-bg",
                         className
                     )}
                 >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    Connect Wallet
+                    <div>
+                        <Wallet className="mr-2 h-4 w-4" />
+                        Connect Wallet
+                    </div>
                 </Button>
             }
             open={open}

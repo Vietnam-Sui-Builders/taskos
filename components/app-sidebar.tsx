@@ -55,6 +55,11 @@ const data = {
       url: "/walrus",
       icon: IconDatabase,
     },
+    {
+      title: "My Tasks",
+      url: "/task/list",
+      icon: IconListDetails,
+    },
     // {
     //   title: "Analytics",
     //   url: "#",
@@ -183,7 +188,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
 
-                  <ConnectButton />
+                  {/* <ConnectButton /> */}
         <CustomBtn />
         <NavUser user={data.user} />
       </SidebarFooter>

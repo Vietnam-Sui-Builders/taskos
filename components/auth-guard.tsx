@@ -1,7 +1,7 @@
 "use client";
 
 import { useCurrentAccount } from "@mysten/dapp-kit";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useWalletStorage } from "@/hooks/use-wallet-storage";
 
@@ -15,6 +15,7 @@ interface AuthGuardProps {
  */
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const currentAccount = useCurrentAccount();
   const { loadWalletFromStorage } = useWalletStorage();
   const [isChecking, setIsChecking] = useState(true);
@@ -47,11 +48,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
       console.log("❌ No wallet found, redirecting to login");
       setIsAuthenticated(false);
       setIsChecking(false);
-      router.push("/login");
+      const redirectParam = pathname
+        ? `?redirect=${encodeURIComponent(pathname)}`
+        : "";
+      router.push(`/login${redirectParam}`);
     };
 
     checkAuth();
-  }, [currentAccount, router, loadWalletFromStorage]);
+  }, [currentAccount, router, loadWalletFromStorage, pathname]);
 
   // Show loading state while checking authentication
   if (isChecking) {

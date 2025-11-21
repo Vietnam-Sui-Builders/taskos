@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import "@mysten/dapp-kit/dist/index.css";
+// import "@mysten/dapp-kit/dist/index.css";
 
 import {
   useCurrentAccount,
@@ -26,7 +26,7 @@ import {
 } from "@mysten/sui/keypairs/passkey";
 import { useWalletStorage } from "@/hooks/use-wallet-storage";
 import { useFaucet } from "@/hooks/use-faucet";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface WalletConnectedSectionProps {
   currentAccount: WalletAccount;
@@ -90,6 +90,7 @@ function EnhancedLoginForm() {
     useSignAndExecuteTransaction();
   const faucet = useFaucet();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [passkeyAccount, setPasskeyAccount] = useState<WalletAccount | null>(
     null
   );
@@ -110,9 +111,10 @@ function EnhancedLoginForm() {
   // Redirect to dashboard only when regular wallet is connected (not passkey)
   useEffect(() => {
     if (currentAccount) {
-      router.push("/dashboard");
+      const redirect = searchParams.get("redirect");
+      router.push(redirect || "/dashboard");
     }
-  }, [currentAccount, router]);
+  }, [currentAccount, router, searchParams]);
 
   // Track Enoki wallet connection changes and save to localStorage
   useEffect(() => {
@@ -240,15 +242,13 @@ function EnhancedLoginForm() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <Button variant="outline" className="w-full">
-              <ConnectButton
-                className="w-full"
-                style={{
-                  backgroundColor: "transparent",
-                  color: "hsl(var(--primary-foreground))",
-                }}
-              />
-            </Button>
+            <ConnectButton
+              className="w-full"
+              style={{
+                backgroundColor: "transparent",
+                color: "hsl(var(--primary-foreground))",
+              }}
+            />
 
             <Button
               variant="outline"
