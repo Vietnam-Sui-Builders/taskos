@@ -24,8 +24,11 @@ export const createAndAddComment =
                 ),
                 tx.pure(bcs.option(bcs.u64()).serialize(null)),
                 tx.pure.u8(2),
+                tx.pure.u8(0), // visibility: 0 = private
                 tx.pure.string("Study"),
                 tx.pure.vector("string", ["Sui"]),
+                tx.pure(bcs.option(bcs.string()).serialize(null)), // content_blob_id
+                tx.pure.vector("string", []), // initial_file_blob_ids
                 tx.object("0x6"),
                 tx.object(ENV.TASKS_REGISTRY_ID),
             ],

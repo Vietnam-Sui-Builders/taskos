@@ -5,6 +5,7 @@ import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount } from "@
 import { Transaction } from "@mysten/sui/transactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleTransactionError } from "@/lib/errorHandling";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,10 +70,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
             toast.success("Comment added!");
             setNewComment("");
         } catch (error) {
-            console.error("Error adding comment:", error);
-            toast.error("Failed to add comment", {
-                description: error instanceof Error ? error.message : "An unexpected error occurred",
-            });
+            handleTransactionError(error, "Failed to add comment");
         } finally {
             setIsProcessing(false);
         }
@@ -113,8 +111,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
             setEditingIndex(null);
             setEditContent("");
         } catch (error) {
-            console.error("Error editing comment:", error);
-            toast.error("Failed to edit comment");
+            handleTransactionError(error, "Failed to edit comment");
         } finally {
             setIsProcessing(false);
         }
@@ -151,8 +148,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
 
             toast.success("Comment deleted!");
         } catch (error) {
-            console.error("Error deleting comment:", error);
-            toast.error("Failed to delete comment");
+            handleTransactionError(error, "Failed to delete comment");
         } finally {
             setIsProcessing(false);
         }

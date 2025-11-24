@@ -116,7 +116,7 @@ async function main() {
 
     const sectionRe = /(### 📝 Testnet Contract Addresses\s*\n\s*\n)```[^\n]*\n([\s\S]*?)```/m;
     if (sectionRe.test(readme)) {
-      readme = readme.replace(sectionRe, `$1```bash\n${newBlock}\n```);
+      readme = readme.replace(sectionRe, `$1\`\`\`bash\n${newBlock}\n\`\`\``);
       await fs.writeFile(readmePath, readme, "utf8");
       console.log("Updated README.md Testnet Contract Addresses block");
     } else {

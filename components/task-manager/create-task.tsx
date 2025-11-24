@@ -29,6 +29,7 @@ import {
 import { Transaction } from "@mysten/sui/transactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleTransactionError } from "@/lib/errorHandling";
 
 export const CreateTask = () => {
 
@@ -40,6 +41,7 @@ export const CreateTask = () => {
     const [category, setCategory] = useState("");
     const [tags, setTags] = useState<string[]>([]);
     const [tagInput, setTagInput] = useState("");
+    const [visibility, setVisibility] = useState("0"); // 0 = private, 1 = team, 2 = public
     const [isCreating, setIsCreating] = useState(false);
     const [open, setOpen] = useState(false);
 
@@ -96,8 +98,11 @@ export const CreateTask = () => {
                         ? tx.pure.option("u64", dueDateTimestamp)
                         : tx.pure.option("u64", null), // due_date: Option<u64>
                     tx.pure.u8(Number(priority)), // priority: u8
+                    tx.pure.u8(Number(visibility)), // visibility: u8
                     tx.pure.string(category), // category: String
                     tx.pure.vector("string", tags), // tags: vector<String>
+                    tx.pure.option("string", null), // content_blob_id: Option<String>
+                    tx.pure.vector("string", []), // initial_file_blob_ids: vector<String>
                     tx.object("0x6"), // clock: &Clock (0x6 is the shared Clock object)
                     tx.object(taskRegistryId), // registry: &mut TaskRegistry
                 ],
@@ -129,14 +134,12 @@ export const CreateTask = () => {
             setImageUrl("");
             setDueDate("");
             setPriority("2");
+            setVisibility("0");
             setCategory("");
             setTags([]);
             setOpen(false);
         } catch (error) {
-            console.error("Error creating task:", error);
-            toast.error("Failed to create task", {
-                description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-            });
+            handleTransactionError(error, "Failed to create task");
         } finally {
             setIsCreating(false);
         }
@@ -204,6 +207,26 @@ export const CreateTask = () => {
                             placeholder="e.g., Development, Design, Marketing"
                             className="bg-background"
                         />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="visibility">Visibility</Label>
+                        <Select
+                            value={visibility}
+                            onValueChange={(value: string) => setVisibility(value)}
+                        >
+                            <SelectTrigger
+                                id="visibility"
+                                className="bg-background"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="0">Private</SelectItem>
+                                <SelectItem value="1">Team</SelectItem>
+                                <SelectItem value="2">Public</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="space-y-2">

@@ -5,6 +5,7 @@ import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount, useSuiCl
 import { Transaction } from "@mysten/sui/transactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleTransactionError } from "@/lib/errorHandling";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,10 +100,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
             setTitle("");
             setDescription("");
         } catch (error) {
-            console.error("Error updating task:", error);
-            toast.error("Failed to update task", {
-                description: error instanceof Error ? error.message : "An unexpected error occurred",
-            });
+            handleTransactionError(error, "Failed to update task");
         } finally {
             setIsUpdating(false);
         }
@@ -141,8 +139,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
             toast.success("Priority updated!");
             setPriority("");
         } catch (error) {
-            console.error("Error:", error);
-            toast.error("Failed to update priority");
+            handleTransactionError(error, "Failed to update priority");
         } finally {
             setIsUpdating(false);
         }
@@ -183,8 +180,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
             toast.success("Status updated!");
             setStatus("");
         } catch (error) {
-            console.error("Error:", error);
-            toast.error("Failed to update status");
+            handleTransactionError(error, "Failed to update status");
         } finally {
             setIsUpdating(false);
         }
@@ -223,8 +219,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
             toast.success("Category updated!");
             setCategory("");
         } catch (error) {
-            console.error("Error:", error);
-            toast.error("Failed to update category");
+            handleTransactionError(error, "Failed to update category");
         } finally {
             setIsUpdating(false);
         }
@@ -264,8 +259,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
             toast.success("Due date updated!");
             setDueDate("");
         } catch (error) {
-            console.error("Error:", error);
-            toast.error("Failed to update due date");
+            handleTransactionError(error, "Failed to update due date");
         } finally {
             setIsUpdating(false);
         }
@@ -304,8 +298,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
             toast.success("Tag added!");
             setNewTag("");
         } catch (error) {
-            console.error("Error:", error);
-            toast.error("Failed to add tag");
+            handleTransactionError(error, "Failed to add tag");
         } finally {
             setIsUpdating(false);
         }
@@ -343,8 +336,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
 
             toast.success("Tag removed!");
         } catch (error) {
-            console.error("Error:", error);
-            toast.error("Failed to remove tag");
+            handleTransactionError(error, "Failed to remove tag");
         } finally {
             setIsUpdating(false);
         }

@@ -186,6 +186,8 @@ public struct TaskCreated has copy, drop {
     creator: address,
     title: String,
     category: String,
+    has_encrypted_content: bool,  // Indicates if task was created with SEAL-encrypted content
+    encrypted_files_count: u64,   // Number of SEAL-encrypted files attached at creation
 }
 
 public struct TaskUpdated has copy, drop {
@@ -374,7 +376,17 @@ fun remove_from_registry(registry: &mut TaskRegistry, task_id: ID, status: u8) {
 
 // ==================== Task CRUD Operations ====================
 
-/// Create a new task
+/// Create a new task with optional SEAL-encrypted Walrus content and files
+/// 
+/// This function enables creating tasks with pre-encrypted content stored on Walrus:
+/// - content_blob_id: Optional blob ID for SEAL-encrypted task description/content
+/// - initial_file_blob_ids: Optional vector of SEAL-encrypted file blob IDs
+/// 
+/// SEAL Integration Flow:
+/// 1. Client encrypts data using SEAL (Identity-Based Encryption)
+/// 2. Client uploads encrypted data to Walrus, receives blob IDs
+/// 3. Client calls create_task with blob IDs
+/// 4. Only users with proper access (checked via seal_approve) can decrypt
 public fun create_task(
     version: &Version,
     title: String,
@@ -385,6 +397,8 @@ public fun create_task(
     visibility: u8,  // 0 = private, 1 = team, 2 = public
     category: String,
     tags: vector<String>,
+    content_blob_id: Option<String>,  // NEW: Optional SEAL-encrypted content blob ID
+    initial_file_blob_ids: vector<String>,  // NEW: Optional SEAL-encrypted file blob IDs
     clock: &Clock,
     registry: &mut TaskRegistry,
     ctx: &mut TxContext,
@@ -416,8 +430,8 @@ public fun create_task(
         title,
         description,
         image_url,
-        content_blob_id: option::none(),
-        file_blob_ids: vector::empty(),
+        content_blob_id,  // Store encrypted content blob ID
+        file_blob_ids: initial_file_blob_ids,  // Store encrypted file blob IDs
         result_blob_id: option::none(),
         created_at: current_time,
         updated_at: current_time,
@@ -440,6 +454,8 @@ public fun create_task(
         creator: tx_context::sender(ctx),
         title: task.title,
         category: task.category,
+        has_encrypted_content: option::is_some(&content_blob_id),
+        encrypted_files_count: vector::length(&initial_file_blob_ids),
     });
 
     task
