@@ -60,10 +60,11 @@ const PRIORITY_HIGH: u8 = 3;
 const PRIORITY_CRITICAL: u8 = 4;
 
 // Status levels
-const STATUS_TODO: u8 = 0;
-const STATUS_IN_PROGRESS: u8 = 1;
-const STATUS_COMPLETED: u8 = 2;
-const STATUS_ARCHIVED: u8 = 3;
+const STATUS_TODO: u8 = 0;  // open
+const STATUS_IN_PROGRESS: u8 = 1;  // assigned
+const STATUS_COMPLETED: u8 = 2;  // completed
+const STATUS_APPROVED: u8 = 3;  // approved
+const STATUS_ARCHIVED: u8 = 4;  // archived (soft deleted)
 
 // Role levels
 const ROLE_VIEWER: u8 = 1;
@@ -99,11 +100,13 @@ public struct Task has key, store {
     image_url: String,
     content_blob_id: Option<String>,
     file_blob_ids: vector<String>,
+    result_blob_id: Option<String>,  // Blob ID of submitted completed work
     created_at: u64,
     updated_at: u64,
     due_date: Option<u64>,
     priority: u8,
-    status: u8,
+    status: u8, // 0 = open, 1 = assigned, 2 = completed, 3 = approved, 4 = archived
+    visibility: u8,  // 0 = private, 1 = team, 2 = public
     category: String,
     tags: vector<String>,
 }
@@ -164,6 +167,7 @@ fun init(otw: TASK_MANAGE, ctx: &mut TxContext) {
     table::add(&mut registry.tasks_by_status, STATUS_TODO, vector::empty<ID>());
     table::add(&mut registry.tasks_by_status, STATUS_IN_PROGRESS, vector::empty<ID>());
     table::add(&mut registry.tasks_by_status, STATUS_COMPLETED, vector::empty<ID>());
+    table::add(&mut registry.tasks_by_status, STATUS_APPROVED, vector::empty<ID>());
     table::add(&mut registry.tasks_by_status, STATUS_ARCHIVED, vector::empty<ID>());
 
     transfer::share_object(registry);
@@ -256,6 +260,13 @@ public struct TaskRewardRefunded has copy, drop {
     amount: u64,
 }
 
+public struct TaskCompleted has copy, drop {
+    task_id: address,
+    assignee: address,
+    result_blob_id: String,
+    timestamp: u64,
+}
+
 // ==================== Helper Functions ====================
 
 /// Check if user has at least the required role level
@@ -294,6 +305,11 @@ fun validate_priority(priority: u8) {
 /// Validate status value
 fun validate_status(status: u8) {
     assert!(status <= STATUS_ARCHIVED, EInvalidStatus);
+}
+
+/// Validate visibility value
+fun validate_visibility(visibility: u8) {
+    assert!(visibility <= 2, EInvalidStatus);  // 0=private, 1=team, 2=public
 }
 
 /// Validate role value
@@ -366,6 +382,7 @@ public fun create_task(
     image_url: String,
     due_date: Option<u64>,
     priority: u8,
+    visibility: u8,  // 0 = private, 1 = team, 2 = public
     category: String,
     tags: vector<String>,
     clock: &Clock,
@@ -379,6 +396,7 @@ public fun create_task(
     validate_string_length(&description, MAX_DESCRIPTION_LENGTH, EDescriptionTooLong);
     validate_string_length(&category, MAX_CATEGORY_LENGTH, ECategoryTooLong);
     validate_priority(priority);
+    assert!(visibility <= 2, EInvalidStatus);  // visibility must be 0, 1, or 2
     assert!(vector::length(&tags) <= MAX_TAGS_COUNT, ETooManyTags);
 
     // Validate tags
@@ -400,11 +418,13 @@ public fun create_task(
         image_url,
         content_blob_id: option::none(),
         file_blob_ids: vector::empty(),
+        result_blob_id: option::none(),
         created_at: current_time,
         updated_at: current_time,
         due_date,
         priority,
         status: STATUS_TODO,
+        visibility,
         category,
         tags,
     };
@@ -519,6 +539,28 @@ public fun update_status(
 
     // Add to new status in registry
     add_to_registry(registry, task_id, status);
+
+    event::emit(TaskUpdated {
+        task_id: object::uid_to_address(&task.id),
+        updated_by: sender,
+    });
+}
+
+/// Update task visibility
+public fun update_visibility(
+    version: &Version,
+    task: &mut Task,
+    visibility: u8,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    version::check_is_valid(version);
+    let sender = tx_context::sender(ctx);
+    assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
+    validate_visibility(visibility);
+
+    task.visibility = visibility;
+    task.updated_at = clock::timestamp_ms(clock);
 
     event::emit(TaskUpdated {
         task_id: object::uid_to_address(&task.id),
@@ -686,11 +728,13 @@ public fun delete_task(
         image_url: _,
         content_blob_id: _,
         file_blob_ids: _,
+        result_blob_id: _,
         created_at: _,
         updated_at: _,
         due_date: _,
         priority: _,
         status: _,
+        visibility: _,
         category: _,
         tags: _,
     } = task;
@@ -1086,8 +1130,49 @@ public fun set_assignee(
     });
 }
 
+/// Submit task completion with result (only assignee can submit)
+public fun complete_task_with_result(
+    version: &Version,
+    task: &mut Task,
+    result_blob_id: String,
+    clock: &Clock,
+    registry: &mut TaskRegistry,
+    ctx: &mut TxContext,
+) {
+    version::check_is_valid(version);
+    let sender = tx_context::sender(ctx);
+    
+    // Check that sender is the assignee
+    assert!(df::exists_(&task.id, AssigneeKey {}), ENoAssignee);
+    let assignee = *df::borrow<AssigneeKey, address>(&task.id, AssigneeKey {});
+    assert!(assignee == sender, EInsufficientPermission);
+    
+    // Task must be in progress
+    assert!(task.status == STATUS_IN_PROGRESS, EInvalidStatus);
+    
+    let old_status = task.status;
+    let task_id = object::id(task);
+    let current_time = clock::timestamp_ms(clock);
+    
+    // Update task status and result
+    task.result_blob_id = option::some(result_blob_id);
+    task.status = STATUS_COMPLETED;
+    task.updated_at = current_time;
+    
+    // Update registry
+    remove_from_registry(registry, task_id, old_status);
+    add_to_registry(registry, task_id, STATUS_COMPLETED);
+    
+    event::emit(TaskCompleted {
+        task_id: object::uid_to_address(&task.id),
+        assignee: sender,
+        result_blob_id,
+        timestamp: current_time,
+    });
+}
+
 /// Approve completion and transfer reward to assignee (only Owner can approve)
-public fun approve_completion(version: &Version, task: &mut Task, ctx: &mut TxContext) {
+public fun approve_completion(version: &Version, task: &mut Task, registry: &mut TaskRegistry, ctx: &mut TxContext) {
     version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
     assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
@@ -1110,6 +1195,14 @@ public fun approve_completion(version: &Version, task: &mut Task, ctx: &mut TxCo
     // Transfer reward to assignee
     let reward_coin = coin::from_balance(balance, ctx);
     sui::transfer::public_transfer(reward_coin, assignee);
+
+    // Update status to APPROVED and update registry
+    let old_status = task.status;
+    let task_id = object::id(task);
+    task.status = STATUS_APPROVED;
+    
+    remove_from_registry(registry, task_id, old_status);
+    add_to_registry(registry, task_id, STATUS_APPROVED);
 
     // Mark as approved
     if (!df::exists_(&task.id, CompletionApprovedKey {})) {
@@ -1257,6 +1350,10 @@ public fun get_file_blob_ids(task: &Task): vector<String> {
     task.file_blob_ids
 }
 
+public fun get_result_blob_id(task: &Task): Option<String> {
+    task.result_blob_id
+}
+
 public fun get_created_at(task: &Task): u64 {
     task.created_at
 }
@@ -1275,6 +1372,10 @@ public fun get_priority(task: &Task): u8 {
 
 public fun get_status(task: &Task): u8 {
     task.status
+}
+
+public fun get_visibility(task: &Task): u8 {
+    task.visibility
 }
 
 public fun get_category(task: &Task): String {
@@ -1376,6 +1477,8 @@ public fun status_todo(): u8 { STATUS_TODO }
 public fun status_in_progress(): u8 { STATUS_IN_PROGRESS }
 
 public fun status_completed(): u8 { STATUS_COMPLETED }
+
+public fun status_approved(): u8 { STATUS_APPROVED }
 
 public fun status_archived(): u8 { STATUS_ARCHIVED }
 
