@@ -56,6 +56,11 @@ const data = {
       icon: IconDatabase,
     },
     {
+      title: "Seal",
+      url: "/seal",
+      icon: IconFileAi,
+    },
+    {
       title: "My Tasks",
       url: "/task/list",
       icon: IconListDetails,
