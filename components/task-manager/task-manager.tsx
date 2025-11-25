@@ -15,7 +15,7 @@ export const TaskManager = () => {
   const account = useCurrentAccount();
   
   // Use custom hook to fetch tasks from registry
-  const { tasks, isLoading, isError } = useTaskRegistry(taskRegistryId);
+  const { tasks, rolesByTask, isLoading, isError } = useTaskRegistry(taskRegistryId);
 
   // Filter tasks based on wallet address
   const myTasks = useMemo(() => {
@@ -33,10 +33,12 @@ export const TaskManager = () => {
   // For now, using mock data until we implement dynamic field querying for access control
   const sharedTasks = useMemo(() => {
     if (!account?.address) return [];
-    // Tasks where the wallet has access but is not the creator
-    // This would require querying dynamic fields for AccessControl
-    return tasks.filter(task => task.creator !== account.address && task.assignee === account.address);
-  }, [tasks, account]);
+    return tasks.filter(task => {
+      if (task.creator === account.address) return false;
+      const roles = rolesByTask[task.id] || [];
+      return roles.some((r) => r.address === account.address);
+    });
+  }, [tasks, rolesByTask, account]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12">Loading tasks...</div>;
@@ -74,7 +76,12 @@ export const TaskManager = () => {
         ) : (
           <TasksList>
             {openTasks.map((task) => (
-              <TaskCard key={task.id} task={task} onSelect={setSelectedTask} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                onSelect={setSelectedTask}
+                sharedRoles={rolesByTask[task.id]}
+              />
             ))}
           </TasksList>
         )}
@@ -92,7 +99,12 @@ export const TaskManager = () => {
         ) : (
           <TasksList>
             {myTasks.map((task) => (
-              <TaskCard key={task.id} task={task} onSelect={setSelectedTask} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                onSelect={setSelectedTask}
+                sharedRoles={rolesByTask[task.id]}
+              />
             ))}
           </TasksList>
         )}
@@ -114,6 +126,7 @@ export const TaskManager = () => {
                 key={task.id}
                 task={task}
                 onSelect={setSelectedTask}
+                sharedRoles={rolesByTask[task.id]}
               />
             ))}
           </TasksList>

@@ -93,8 +93,24 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     const existingContentBlobId = (fields?.content_blob_id as string) || "";
     const existingFileBlobIds = (fields?.file_blob_ids as string[]) || [];
 
-    // Derive symmetric key bound to the connected wallet (prevents other wallets from decrypting)
+    // Shared symmetric key derived from taskId + creator (allows any shared viewer of the task to decrypt)
     const deriveWalrusKey = useMemo(() => {
+        return async () => {
+            if (!taskId) {
+                throw new Error("Task ID missing for encryption key derivation");
+            }
+            const creatorAddr = typeof fields?.creator === "string" ? String(fields.creator) : "";
+            if (!creatorAddr) {
+                throw new Error("Task creator missing for encryption key derivation");
+            }
+            const raw = `${WALRUS_KEY_MESSAGE}:${taskId.toLowerCase()}:${creatorAddr.toLowerCase()}`;
+            const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+            return new Uint8Array(digest);
+        };
+    }, [fields?.creator, taskId]);
+
+    // Legacy wallet-bound key (fallback for already-uploaded blobs)
+    const deriveLegacyWalrusKey = useMemo(() => {
         return async () => {
             if (!account) {
                 throw new Error("Connect a wallet to derive the encryption key");
@@ -126,7 +142,7 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     // expectEncrypted=true ensures non-tagged payloads (legacy format nonce||cipher) also require the creator wallet
     const decryptBytes = (
         payload: Uint8Array,
-        key: Uint8Array | undefined,
+        keys: Array<Uint8Array | undefined>,
         options: { expectEncrypted: boolean; softFail?: boolean }
     ): Uint8Array | null => {
         const { expectEncrypted, softFail } = options;
@@ -134,7 +150,7 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
             payload.length > ENCRYPTION_TAG.length + NONCE_LENGTH &&
             ENCRYPTION_TAG.every((byte, idx) => payload[idx] === byte);
 
-        const tryDecrypt = (offset: number): Uint8Array | null => {
+        const tryDecrypt = (offset: number, key?: Uint8Array): Uint8Array | null => {
             if (payload.length <= offset + NONCE_LENGTH) {
                 return null;
             }
@@ -144,33 +160,37 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
             return plaintext ? new Uint8Array(plaintext) : null;
         };
 
-        // Public/plaintext path
-        if (!key) {
-            if (!expectEncrypted || !hasTag) {
-                return payload;
+        const candidateKeys = keys.length ? keys : [undefined];
+
+        for (const key of candidateKeys) {
+            // Public/plaintext path
+            if (!key) {
+                if (!expectEncrypted || !hasTag) {
+                    return payload;
+                }
+                continue;
             }
-            if (softFail) return null;
+
+            // Tagged payload (new format)
+            if (hasTag) {
+                const decrypted = tryDecrypt(ENCRYPTION_TAG.length, key);
+                if (decrypted) return decrypted;
+                continue;
+            }
+
+            // Legacy encrypted payload assumed as [nonce || cipher]
+            if (expectEncrypted) {
+                const decrypted = tryDecrypt(0, key);
+                if (decrypted) return decrypted;
+            }
+        }
+
+        if (softFail) return null;
+        if (!expectEncrypted) return payload;
+        if (!candidateKeys.filter(Boolean).length) {
             throw new Error("This blob is encrypted and requires the owner wallet to view.");
         }
-
-        // Tagged payload (new format)
-        if (hasTag) {
-            const decrypted = tryDecrypt(ENCRYPTION_TAG.length);
-            if (decrypted) return decrypted;
-            if (softFail) return null;
-            throw new Error("Unable to decrypt data with this wallet");
-        }
-
-        // Legacy encrypted payload assumed as [nonce || cipher]
-        if (expectEncrypted) {
-            const decrypted = tryDecrypt(0);
-            if (decrypted) return decrypted;
-            if (softFail) return null;
-            throw new Error("Unable to decrypt data with this wallet");
-        }
-
-        // Not expected to be encrypted; return raw
-        return payload;
+        throw new Error("Unable to decrypt data with this wallet");
     };
 
     // Cleanup blob URLs
@@ -246,17 +266,47 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     };
 
     const handleViewContent = async () => {
-        if (!account && !isPublicTask) {
-            toast.error("Connect the creator wallet to view encrypted content");
-            return;
-        }
-
         setIsLoadingContent(true);
         setDecryptedContent("");
         setDecryptedFiles([]);
         
         try {
-            const encryptionKey = isPublicTask ? undefined : await deriveWalrusKey();
+            console.log("[TaskContentUpload] Starting content view", {
+                taskId,
+                isPublicTask,
+                hasAccount: !!account,
+                creator: fields?.creator,
+            });
+
+            const candidateKeys: Array<Uint8Array | undefined> = [];
+            if (isPublicTask) {
+                console.log("[TaskContentUpload] Public task - no encryption");
+                candidateKeys.push(undefined);
+            } else {
+                // Try task-based deterministic key first (works for all shared users)
+                try {
+                    const taskKey = await deriveWalrusKey();
+                    candidateKeys.push(taskKey);
+                    console.log("[TaskContentUpload] Successfully derived task-based key", {
+                        keyPreview: Array.from(taskKey.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(''),
+                    });
+                } catch (e) {
+                    console.error("[TaskContentUpload] Task-based key derivation failed:", e);
+                }
+                
+                // Try legacy wallet-based key (for backward compatibility)
+                if (account) {
+                    try {
+                        const legacyKey = await deriveLegacyWalrusKey();
+                        candidateKeys.push(legacyKey);
+                        console.log("[TaskContentUpload] Successfully derived legacy wallet key");
+                    } catch (e) {
+                        console.warn("[TaskContentUpload] Legacy key derivation failed:", e);
+                    }
+                }
+            }
+
+            console.log("[TaskContentUpload] Have", candidateKeys.length, "candidate keys for decryption");
             let localContent = "";
             let localFiles: Array<{ name: string; url: string; type: string; blobId: string }> = [];
             let hadDecryptFailure = false;
@@ -266,16 +316,30 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                 try {
                     console.log("[TaskContentUpload] Fetching content blob:", existingContentBlobId);
                     const encryptedBytes = await getWalrusBlob(existingContentBlobId);
-                    const decryptedBytes = decryptBytes(encryptedBytes, encryptionKey, {
+                    const decryptedBytes = decryptBytes(encryptedBytes, candidateKeys, {
                         expectEncrypted: !isPublicTask,
                         softFail: true,
                     });
                     if (!decryptedBytes) {
                         hadDecryptFailure = true;
-                        toast.error("Connect the creator wallet to view encrypted content");
+                        console.error("[TaskContentUpload] Failed to decrypt content with available keys");
+                        
+                        // Check if user is not the creator
+                        const isCreator = account?.address === fields?.creator;
+                        
+                        if (!isCreator) {
+                            toast.error("Cannot decrypt content", {
+                                description: "This content was encrypted with the creator's wallet. Only the creator can view it, or they need to re-upload using the new shared encryption format."
+                            });
+                        } else {
+                            toast.error("Unable to decrypt content", {
+                                description: "Failed to decrypt with available keys. The content may be corrupted."
+                            });
+                        }
                     } else {
                         const textDecoder = new TextDecoder();
                         localContent = textDecoder.decode(decryptedBytes);
+                        console.log("[TaskContentUpload] Successfully decrypted content");
                     }
                 } catch (err) {
                     console.error("Error fetching content:", err);
@@ -285,7 +349,17 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                         message.includes("requires the owner wallet") ||
                         message.includes("Unable to decrypt")
                     ) {
-                        toast.error("Connect the creator wallet to view encrypted content");
+                        const isCreator = account?.address === fields?.creator;
+                        
+                        if (!isCreator) {
+                            toast.error("Cannot decrypt content", {
+                                description: "This content was encrypted with the creator's wallet. Ask the creator to re-upload it using the new shared encryption format."
+                            });
+                        } else {
+                            toast.error("Unable to decrypt content", {
+                                description: message
+                            });
+                        }
                         hadDecryptFailure = true;
                     } else {
                         toast.error("Failed to load content", {
@@ -301,13 +375,26 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                     const blobId = existingFileBlobIds[i];
                     try {
                         const encryptedFileBytes = await getWalrusBlob(blobId);
-                        const fileBytes = decryptBytes(encryptedFileBytes, encryptionKey, {
+                        const fileBytes = decryptBytes(encryptedFileBytes, candidateKeys, {
                             expectEncrypted: !isPublicTask,
                             softFail: true,
                         });
                         if (!fileBytes) {
                             hadDecryptFailure = true;
-                            toast.error("Connect the creator wallet to view encrypted content");
+                            console.error("[TaskContentUpload] Failed to decrypt file with available keys", blobId);
+                            
+                            // Check if user is not the creator
+                            const isCreator = account?.address === fields?.creator;
+                            
+                            if (!isCreator) {
+                                toast.error("Cannot decrypt files", {
+                                    description: "These files were encrypted with the creator's wallet. Only the creator can view them, or they need to re-upload using the new shared encryption format."
+                                });
+                            } else {
+                                toast.error("Unable to decrypt file", {
+                                    description: "Failed to decrypt with available keys. The file may be corrupted."
+                                });
+                            }
                             break;
                         }
                         
@@ -348,7 +435,17 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                             message.includes("requires the owner wallet") ||
                             message.includes("Unable to decrypt")
                         ) {
-                            toast.error("Connect the creator wallet to view encrypted content");
+                            const isCreator = account?.address === fields?.creator;
+                            
+                            if (!isCreator) {
+                                toast.error("Cannot decrypt files", {
+                                    description: "These files were encrypted with the creator's wallet. Ask the creator to re-upload them using the new shared encryption format."
+                                });
+                            } else {
+                                toast.error("Unable to decrypt file", {
+                                    description: message
+                                });
+                            }
                             hadDecryptFailure = true;
                             // Stop trying further files; they will also fail
                             break;
@@ -565,6 +662,33 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
 
     return (
         <div className="space-y-6">
+            {/* Migration Notice for Creator */}
+            {account?.address === fields?.creator && (existingContentBlobId || existingFileBlobIds.length > 0) && (
+                <Card className="p-4 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
+                    <CardContent className="p-0">
+                        <div className="flex items-start gap-3">
+                            <div className="rounded-full bg-yellow-100 dark:bg-yellow-900 p-2">
+                                <svg className="h-5 w-5 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                                    Encryption Format Update
+                                </h3>
+                                <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
+                                    Your existing content may be encrypted with an older format that prevents shared users from viewing it. 
+                                    To enable shared access, please re-upload your content below. The new format allows anyone with task access to decrypt the content.
+                                </p>
+                                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                                    💡 New uploads automatically use the shared encryption format.
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Existing Walrus Storage Section */}
             {(existingContentBlobId || existingFileBlobIds.length > 0) && (
                 <Card className="p-6 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">

@@ -13,9 +13,11 @@ import {
 import { useState, useEffect } from "react";
 import { formatDueDate, getPriorityLabel, isOverdue } from "@/helpers";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { Hash, Copy, ExternalLink, Eye, FileText, Loader2 } from "lucide-react";
+import { Hash, Copy, ExternalLink, Eye, FileText, Loader2, User, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getWalrusBlob } from "@/utils/walrus";
+import { useSuiClient } from "@mysten/dapp-kit";
+import { ROLE_OWNER, ROLE_EDITOR, ROLE_VIEWER } from "@/types";
 
 interface TaskViewerProps {
     taskId: string;
@@ -25,6 +27,10 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
     const [decryptedContent, setDecryptedContent] = useState<string>("");
     const [isLoadingContent, setIsLoadingContent] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [sharedRoles, setSharedRoles] = useState<Array<{ address: string; role: number }>>([]);
+    const [isLoadingRoles, setIsLoadingRoles] = useState(false);
+    const [assignee, setAssignee] = useState<string | null>(null);
+    const client = useSuiClient();
 
     // Fetch task from blockchain
     const { data: taskData, isLoading: isLoadingTask, isError } = useSuiClientQuery(
@@ -40,6 +46,135 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
             enabled: !!taskId,
         }
     );
+
+    // Fetch assignee and shared roles from dynamic fields - must be before any conditional returns
+    useEffect(() => {
+        if (!taskId) return;
+        
+        let cancelled = false;
+        const fetchRoles = async () => {
+            try {
+                setIsLoadingRoles(true);
+                setSharedRoles([]);
+                setAssignee(null);
+                
+                // Find AccessControl and Assignee dynamic fields on the task
+                const dynamicFields = await client.getDynamicFields({ parentId: taskId });
+                let rolesTableId: string | null = null;
+
+                const hasAccessControlKey = (dfName: unknown) => {
+                    const candidate = typeof dfName === "string" ? dfName : (dfName as Record<string, unknown>)?.type || "";
+                    return typeof candidate === "string" && candidate.includes("AccessControlKey");
+                };
+
+                const hasAssigneeKey = (dfName: unknown) => {
+                    const candidate = typeof dfName === "string" ? dfName : (dfName as Record<string, unknown>)?.type || "";
+                    return typeof candidate === "string" && candidate.includes("AssigneeKey");
+                };
+
+                for (const df of dynamicFields.data) {
+                    // Check for assignee
+                    if (hasAssigneeKey(df.name)) {
+                        try {
+                            const dfObj = await client.getDynamicFieldObject({
+                                parentId: taskId,
+                                name: df.name,
+                            });
+                            const content = dfObj.data?.content;
+                            if (content && content.dataType === "moveObject" && "fields" in content) {
+                                const fields = content.fields as Record<string, unknown>;
+                                const assigneeAddr = fields.value as string;
+                                if (assigneeAddr && !cancelled) {
+                                    setAssignee(assigneeAddr);
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Error fetching assignee:", err);
+                        }
+                    }
+                    
+                    if (!hasAccessControlKey(df.name)) continue;
+                    
+                    try {
+                        const dfObj = await client.getDynamicFieldObject({
+                            parentId: taskId,
+                            name: df.name,
+                        });
+                        
+                        const content = dfObj.data?.content;
+                        if (content && content.dataType === "moveObject" && "fields" in content) {
+                            const fields = content.fields as Record<string, unknown>;
+                            
+                            // The AccessControl is nested: fields.value.fields.roles.fields.id.id
+                            const valueFields = (fields?.value as Record<string, unknown>)?.fields as Record<string, unknown>;
+                            const rolesField = valueFields?.roles as Record<string, unknown>;
+                            
+                            // Extract table ID from the nested structure
+                            const idObj = (rolesField?.fields as Record<string, unknown>)?.id as Record<string, unknown>;
+                            rolesTableId = idObj?.id as string;
+                            
+                            if (rolesTableId) break;
+                        }
+                    } catch (dfErr) {
+                        console.warn("[TaskViewer] Failed to inspect dynamic field", dfErr);
+                    }
+                }
+
+                if (!rolesTableId) {
+                    return;
+                }
+
+                const roleEntries: Array<{ address: string; role: number }> = [];
+                const roleDynamicFields = await client.getDynamicFields({ parentId: rolesTableId });
+                
+                for (const df of roleDynamicFields.data) {
+                    try {
+                        const entryObj = await client.getDynamicFieldObject({
+                            parentId: rolesTableId,
+                            name: df.name,
+                        });
+                        
+                        const entryContent = entryObj.data?.content;
+                        if (
+                            entryContent &&
+                            entryContent.dataType === "moveObject" &&
+                            "fields" in entryContent
+                        ) {
+                            const f = entryContent.fields as Record<string, unknown>;
+                            
+                            // For table entries, the address is in the 'name' field
+                            // and the role is in the 'value' field
+                            const address = String(f.name || "");
+                            const role = Number(f.value ?? 0);
+                            
+                            if (address && address.startsWith("0x")) {
+                                roleEntries.push({ address, role });
+                            }
+                        }
+                    } catch (entryErr) {
+                        console.warn("[TaskViewer] Failed to read role entry", entryErr);
+                    }
+                }
+
+                if (!cancelled) {
+                    setSharedRoles(roleEntries);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.warn("[TaskViewer] Failed to fetch shared roles", error);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoadingRoles(false);
+                }
+            }
+        };
+
+        fetchRoles();
+        return () => {
+            cancelled = true;
+        };
+    }, [client, taskId]);
 
     if (isLoadingTask) {
         return (
@@ -74,6 +209,7 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
     const fields = taskData.data.content.fields as Record<string, unknown>;
     const dueDate = fields.due_date as { vec: string[] } | undefined;
     const contentBlobId = fields.content_blob_id as { vec: string[] } | undefined;
+    const resultBlobId = fields.result_blob_id as { vec: string[] } | undefined;
     const fileBlobIds = (fields.file_blob_ids as string[]) || [];
     const status = fields.status as number;
     const createdAt = fields.created_at as string;
@@ -93,6 +229,7 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
         updated_at: updatedAt,
         due_date: dueDate?.vec?.[0] || "0",
         content_blob_id: contentBlobId?.vec?.[0] || "",
+        result_blob_id: resultBlobId?.vec?.[0] || "",
         file_blob_ids: fileBlobIds,
         category,
         tags,
@@ -123,6 +260,21 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
         }
     };
 
+    // Map numeric role to label
+    const getRoleLabel = (role: number) => {
+        switch (role) {
+            case ROLE_OWNER:
+                return "Owner";
+            case ROLE_EDITOR:
+                return "Editor";
+            case ROLE_VIEWER:
+                return "Viewer";
+            default:
+                return `Role ${role}`;
+        }
+    };
+
+    // Fetch shared roles from dynamic field table
     const handleViewContent = async () => {
         if (!task.content_blob_id) return;
         
@@ -251,6 +403,99 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                                 <Copy className="h-3 w-3" />
                             </Button>
                         </div>
+                    </div>
+
+                    {/* Assignee Section */}
+                    {assignee && (
+                        <div className="border rounded-lg p-3 bg-blue-50 dark:bg-blue-950">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <User className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0">
+                                        Assignee:
+                                    </span>
+                                    <code className="text-sm font-mono text-blue-600 dark:text-blue-400 truncate">
+                                        {assignee}
+                                    </code>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => copyToClipboard(assignee)}
+                                    className="h-7 px-2 shrink-0"
+                                    title="Copy assignee address"
+                                >
+                                    <Copy className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Result/Completed Work Section */}
+                    {task.result_blob_id && (
+                        <div className="border rounded-lg p-3 bg-green-50 dark:bg-green-950">
+                            <div className="flex items-center gap-2 mb-2">
+                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                                    Submitted Work
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <code className="text-xs font-mono flex-1 break-all text-gray-800 dark:text-gray-200 bg-white dark:bg-slate-800 p-2 rounded border">
+                                    {task.result_blob_id}
+                                </code>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => copyToClipboard(task.result_blob_id)}
+                                    className="h-7 px-2 shrink-0"
+                                    title="Copy result blob ID"
+                                >
+                                    <Copy className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Shared Access */}
+                    <div className="border rounded-lg p-3 bg-slate-50 dark:bg-slate-900">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                                    Shared Access
+                                </span>
+                            </div>
+                            <Badge variant="secondary">
+                                {isLoadingRoles ? "Loading..." : `Total: ${sharedRoles.length}`}
+                            </Badge>
+                        </div>
+                        {isLoadingRoles ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span>Fetching access list…</span>
+                            </div>
+                        ) : sharedRoles.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                No additional addresses have been shared.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {sharedRoles.map((entry) => (
+                                    <div
+                                        key={entry.address}
+                                        className="flex items-center justify-between rounded border px-3 py-2 bg-white dark:bg-slate-800"
+                                    >
+                                        <code className="text-xs font-mono break-all text-gray-800 dark:text-gray-200 flex-1">
+                                            {entry.address}
+                                        </code>
+                                        <Badge className="ml-3">
+                                            {getRoleLabel(entry.role)}
+                                        </Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Dates */}

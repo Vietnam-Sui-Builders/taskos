@@ -402,7 +402,7 @@ public fun create_task(
     clock: &Clock,
     registry: &mut TaskRegistry,
     ctx: &mut TxContext,
-): Task {
+) {
     version::check_is_valid(version);
 
     // Validations
@@ -424,7 +424,7 @@ public fun create_task(
 
     let current_time = clock::timestamp_ms(clock);
 
-    let task = Task {
+    let mut task = Task {
         id: object::new(ctx),
         creator: tx_context::sender(ctx),
         title,
@@ -458,7 +458,8 @@ public fun create_task(
         encrypted_files_count: vector::length(&initial_file_blob_ids),
     });
 
-    task
+    // Share the task object so both creator and assignee can mutate it
+    transfer::share_object(task);
 }
 
 /// Update task basic information

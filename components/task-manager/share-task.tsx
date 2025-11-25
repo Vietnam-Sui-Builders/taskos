@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount } from "@mysten/dapp-kit";
+import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount, useSuiClientQuery, useSignPersonalMessage } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { isValidSuiAddress } from "@mysten/sui/utils";
+import { fromB64 } from "@mysten/sui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import * as nacl from "tweetnacl";
 
 import {
     Card,
@@ -26,6 +28,12 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ROLE_VIEWER, ROLE_EDITOR, ROLE_OWNER } from "@/types";
+import { getWalrusBlob, uploadWalrusFileWithFlow } from "@/utils/walrus";
+import { Loader2 } from "lucide-react";
+
+const WALRUS_KEY_MESSAGE = "TaskOS Walrus encryption key";
+const ENCRYPTION_TAG = new TextEncoder().encode("TOS-ENC1");
+const NONCE_LENGTH = nacl.secretbox.nonceLength;
 
 interface ShareTaskProps {
     taskId: string | undefined;
@@ -41,6 +49,176 @@ export function ShareTask({ taskId, onShared }: ShareTaskProps) {
     const suiClient = useSuiClient();
     const queryClient = useQueryClient();
     const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+    const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
+
+    // Fetch task from blockchain
+    const { data: taskData } = useSuiClientQuery(
+        "getObject",
+        {
+            id: taskId || "",
+            options: {
+                showContent: true,
+            },
+        },
+        {
+            enabled: !!taskId,
+        }
+    );
+
+    // Extract task data
+    const fields = taskData?.data?.content?.dataType === "moveObject" 
+        ? (taskData.data.content.fields as Record<string, unknown>)
+        : null;
+    
+    const existingContentBlobId = (fields?.content_blob_id as string) || "";
+    const existingFileBlobIds = (fields?.file_blob_ids as string[]) || [];
+    const hasExistingContent = !!(existingContentBlobId || existingFileBlobIds.length > 0);
+
+    // Derive task-based shared encryption key
+    const deriveSharedKey = async () => {
+        if (!taskId || !fields?.creator) {
+            throw new Error("Missing task ID or creator");
+        }
+        const creatorAddr = String(fields.creator);
+        const raw = `${WALRUS_KEY_MESSAGE}:${taskId.toLowerCase()}:${creatorAddr.toLowerCase()}`;
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+        return new Uint8Array(digest);
+    };
+
+    // Derive legacy wallet-based key
+    const deriveLegacyKey = async () => {
+        if (!account) {
+            throw new Error("No account connected");
+        }
+        const message = new TextEncoder().encode(`${WALRUS_KEY_MESSAGE}:${account.address.toLowerCase()}`);
+        const { signature } = await signPersonalMessage({ message });
+        const signatureBytes = fromB64(signature);
+        const digest = await crypto.subtle.digest("SHA-256", signatureBytes);
+        return new Uint8Array(digest);
+    };
+
+    // Encrypt with new shared format
+    const encryptBytes = (bytes: Uint8Array, key: Uint8Array): Uint8Array => {
+        const nonce = nacl.randomBytes(NONCE_LENGTH);
+        const cipher = nacl.secretbox(bytes, nonce, key);
+        if (!cipher) {
+            throw new Error("Encryption failed");
+        }
+        const payload = new Uint8Array(ENCRYPTION_TAG.length + nonce.length + cipher.length);
+        payload.set(ENCRYPTION_TAG, 0);
+        payload.set(nonce, ENCRYPTION_TAG.length);
+        payload.set(cipher, ENCRYPTION_TAG.length + nonce.length);
+        return payload;
+    };
+
+    // Decrypt with multiple key attempts
+    const decryptBytes = (payload: Uint8Array, keys: Uint8Array[]): Uint8Array | null => {
+        const hasTag = payload.length > ENCRYPTION_TAG.length + NONCE_LENGTH &&
+            ENCRYPTION_TAG.every((byte, idx) => payload[idx] === byte);
+
+        for (const key of keys) {
+            const offset = hasTag ? ENCRYPTION_TAG.length : 0;
+            if (payload.length <= offset + NONCE_LENGTH) continue;
+            
+            const nonce = payload.slice(offset, offset + NONCE_LENGTH);
+            const cipher = payload.slice(offset + NONCE_LENGTH);
+            const plaintext = nacl.secretbox.open(cipher, nonce, key);
+            
+            if (plaintext) {
+                return new Uint8Array(plaintext);
+            }
+        }
+        return null;
+    };
+
+    // Re-encrypt existing content with shared key
+    const reEncryptContent = async (): Promise<{
+        newContentBlobId?: string;
+        newFileBlobIds?: string[];
+    }> => {
+        if (!hasExistingContent) {
+            return {};
+        }
+
+        console.log("[ShareTask] Re-encrypting content with shared key...");
+        
+        const sharedKey = await deriveSharedKey();
+        const legacyKey = await deriveLegacyKey();
+        const keys = [sharedKey, legacyKey];
+
+        let newContentBlobId: string | undefined;
+        const newFileBlobIds: string[] = [];
+
+        const signTransactionWithWallet = async (txToSign: Transaction) => {
+            const result = await signAndExecuteTransaction({ transaction: txToSign });
+            return { digest: result.digest };
+        };
+
+        // Re-encrypt content blob
+        if (existingContentBlobId) {
+            try {
+                console.log("[ShareTask] Decrypting content blob:", existingContentBlobId);
+                const encryptedBytes = await getWalrusBlob(existingContentBlobId);
+                const decryptedBytes = decryptBytes(encryptedBytes, keys);
+                
+                if (!decryptedBytes) {
+                    throw new Error("Failed to decrypt existing content");
+                }
+
+                console.log("[ShareTask] Re-encrypting with shared key...");
+                const reEncryptedBytes = encryptBytes(decryptedBytes, sharedKey);
+
+                console.log("[ShareTask] Uploading re-encrypted content...");
+                const result = await uploadWalrusFileWithFlow(
+                    reEncryptedBytes,
+                    signTransactionWithWallet,
+                    account!.address,
+                    { epochs: 5, deletable: true }
+                );
+
+                newContentBlobId = result.blobId;
+                console.log("[ShareTask] Content re-uploaded:", newContentBlobId);
+            } catch (err) {
+                console.error("[ShareTask] Failed to re-encrypt content:", err);
+                throw new Error("Failed to re-encrypt content. Make sure you're using the creator wallet.");
+            }
+        }
+
+        // Re-encrypt file blobs
+        if (existingFileBlobIds.length > 0) {
+            for (let i = 0; i < existingFileBlobIds.length; i++) {
+                const blobId = existingFileBlobIds[i];
+                try {
+                    console.log(`[ShareTask] Decrypting file ${i + 1}/${existingFileBlobIds.length}:`, blobId);
+                    const encryptedBytes = await getWalrusBlob(blobId);
+                    const decryptedBytes = decryptBytes(encryptedBytes, keys);
+                    
+                    if (!decryptedBytes) {
+                        throw new Error(`Failed to decrypt file ${i + 1}`);
+                    }
+
+                    console.log(`[ShareTask] Re-encrypting file ${i + 1}...`);
+                    const reEncryptedBytes = encryptBytes(decryptedBytes, sharedKey);
+
+                    console.log(`[ShareTask] Uploading re-encrypted file ${i + 1}...`);
+                    const result = await uploadWalrusFileWithFlow(
+                        reEncryptedBytes,
+                        signTransactionWithWallet,
+                        account!.address,
+                        { epochs: 5, deletable: true }
+                    );
+
+                    newFileBlobIds.push(result.blobId);
+                    console.log(`[ShareTask] File ${i + 1} re-uploaded:`, result.blobId);
+                } catch (err) {
+                    console.error(`[ShareTask] Failed to re-encrypt file ${i + 1}:`, err);
+                    throw new Error(`Failed to re-encrypt file ${i + 1}`);
+                }
+            }
+        }
+
+        return { newContentBlobId, newFileBlobIds };
+    };
 
     const shareTask = async () => {
         if (!taskId || !account) return;
@@ -70,6 +248,55 @@ export function ShareTask({ taskId, onShared }: ShareTaskProps) {
         try {
             const tx = new Transaction();
             
+            // Step 1: Re-encrypt existing content if present
+            let reEncryptedData: { newContentBlobId?: string; newFileBlobIds?: string[] } = {};
+            
+            if (hasExistingContent) {
+                toast.info("Re-encrypting content for shared access...", {
+                    description: "This may take a moment"
+                });
+                
+                try {
+                    reEncryptedData = await reEncryptContent();
+                    
+                    // Update content blob ID if re-encrypted
+                    if (reEncryptedData.newContentBlobId) {
+                        tx.moveCall({
+                            target: `${packageId}::task_manage::add_content`,
+                            arguments: [
+                                tx.object(versionObjectId),
+                                tx.object(taskId),
+                                tx.pure.option("string", reEncryptedData.newContentBlobId),
+                                tx.object("0x6"),
+                            ],
+                        });
+                    }
+                    
+                    // Update file blob IDs if re-encrypted
+                    if (reEncryptedData.newFileBlobIds && reEncryptedData.newFileBlobIds.length > 0) {
+                        tx.moveCall({
+                            target: `${packageId}::task_manage::add_files`,
+                            arguments: [
+                                tx.object(versionObjectId),
+                                tx.object(taskId),
+                                tx.pure.vector("string", reEncryptedData.newFileBlobIds),
+                                tx.object("0x6"),
+                            ],
+                        });
+                    }
+                    
+                    toast.success("Content re-encrypted successfully!");
+                } catch (reEncryptErr) {
+                    console.error("[ShareTask] Re-encryption failed:", reEncryptErr);
+                    toast.error("Failed to re-encrypt content", {
+                        description: reEncryptErr instanceof Error ? reEncryptErr.message : "Unknown error"
+                    });
+                    setIsSharing(false);
+                    return;
+                }
+            }
+            
+            // Step 2: Grant access to the user
             tx.moveCall({
                 target: `${packageId}::task_manage::add_user_with_role`,
                 arguments: [
@@ -90,8 +317,12 @@ export function ShareTask({ taskId, onShared }: ShareTaskProps) {
                 queryKey: ["testnet", "getObject"],
             });
 
-            toast.success("Task shared successfully!", {
-                description: `Granted ${getRoleLabel(Number(selectedRole))} access to ${address.slice(0, 8)}...`,
+            const successMessage = hasExistingContent
+                ? `Task shared with re-encrypted content! ${getRoleLabel(Number(selectedRole))} access granted to ${address.slice(0, 8)}...`
+                : `Task shared successfully! ${getRoleLabel(Number(selectedRole))} access granted to ${address.slice(0, 8)}...`;
+
+            toast.success("Access Granted!", {
+                description: successMessage,
             });
 
             setUserAddress("");
@@ -126,6 +357,26 @@ export function ShareTask({ taskId, onShared }: ShareTaskProps) {
 
             <ScrollArea className="flex-1 px-6">
                 <CardContent className="space-y-4 pb-6">
+                    {hasExistingContent && (
+                        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3">
+                            <div className="flex items-start gap-2">
+                                <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-1 mt-0.5">
+                                    <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-1">
+                                        Auto Re-encryption Enabled
+                                    </p>
+                                    <p className="text-xs text-blue-800 dark:text-blue-200">
+                                        This task has existing content. When you share it, the content will automatically be re-encrypted with a shared key format that allows the new user to decrypt it.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label htmlFor="userAddress">
                             User Address
@@ -177,7 +428,14 @@ export function ShareTask({ taskId, onShared }: ShareTaskProps) {
                     disabled={!userAddress.trim() || isSharing}
                     className="w-full"
                 >
-                    {isSharing ? "Sharing..." : "Grant Access"}
+                    {isSharing ? (
+                        <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {hasExistingContent ? "Re-encrypting & Sharing..." : "Sharing..."}
+                        </>
+                    ) : (
+                        hasExistingContent ? "Re-encrypt & Grant Access" : "Grant Access"
+                    )}
                 </Button>
             </CardFooter>
         </Card>

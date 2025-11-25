@@ -360,6 +360,46 @@ export function getBlobUrl(blobId: string): string {
 }
 
 /**
+ * Upload text content to Walrus and return the blob ID
+ * This uses uploadWalrusFileWithFlow which requires wallet signing
+ * @param content - Text content to upload
+ * @param signTransaction - Function to sign transactions
+ * @param ownerAddress - Owner address from wallet
+ * @returns Promise resolving to the blob ID
+ */
+export async function uploadToWalrus(
+  content: string,
+  signTransaction: (tx: unknown) => Promise<{ digest: string }>,
+  ownerAddress: string
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(content);
+
+  try {
+    console.log("[Walrus] Starting upload with signing", { size: bytes.length });
+    
+    const result = await uploadWalrusFileWithFlow(
+      bytes,
+      signTransaction,
+      ownerAddress,
+      {
+        epochs: 5,
+        deletable: true,
+      }
+    );
+    
+    console.log("[Walrus] Upload successful", { blobId: result.blobId });
+    return result.blobId;
+  } catch (error) {
+    console.error("[Walrus] Upload failed", error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to upload to Walrus: ${error.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
  * Format file size to human readable format
  * @param bytes - File size in bytes
  * @returns Formatted string (e.g., "1.5 MB")

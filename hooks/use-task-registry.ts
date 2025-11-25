@@ -2,6 +2,7 @@ import { useSuiClient, useSuiClientQuery } from "@mysten/dapp-kit";
 import { useEffect, useState } from "react";
 import { TaskItem } from "@/types";
 import { SuiObjectResponse } from "@mysten/sui/client";
+import { useMemo } from "react";
 
 // Status constants from Move contract
 const STATUS_TODO = 0;
@@ -27,6 +28,7 @@ const convertToTaskItem = (taskObject: SuiObjectResponse): TaskItem | null => {
     const createdAt = fields.created_at as string;
     const status = fields.status as number;
     const assignee = fields.assignee as { vec: string[] } | undefined;
+    const accessControlTable = fields.access_control as { fields?: { roles: { id: string } } } | undefined;
 
     console.log("Converting task:", { objectId, fields });
 
@@ -42,6 +44,7 @@ const convertToTaskItem = (taskObject: SuiObjectResponse): TaskItem | null => {
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       priority: String(fields.priority || 1),
       assignee: assignee?.vec?.[0] || undefined,
+      access_control_table_id: accessControlTable?.fields?.roles?.id,
     };
   } catch (error) {
     console.error("Error converting task:", error, taskObject);
@@ -54,6 +57,7 @@ export const useTaskRegistry = (registryId: string | undefined) => {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [taskIds, setTaskIds] = useState<string[]>([]);
+  const [rolesByTask, setRolesByTask] = useState<Record<string, Array<{ address: string; role: number }>>>({});
 
   // Fetch the registry object to get dynamic field info
   const { data: registryData, isLoading: isLoadingRegistry, isError } = useSuiClientQuery(
@@ -166,6 +170,37 @@ export const useTaskRegistry = (registryId: string | undefined) => {
         console.log("Converted tasks:", convertedTasks);
 
         setTasks(convertedTasks);
+        // fetch roles for each task that exposes access_control_table_id
+        const tasksWithAcl = convertedTasks.filter((t) => t.access_control_table_id);
+        if (tasksWithAcl.length) {
+          const roleResults: Record<string, Array<{ address: string; role: number }>> = {};
+          for (const task of tasksWithAcl) {
+            try {
+              const tableId = task.access_control_table_id!;
+              const dynFields = await client.getDynamicFields({ parentId: tableId });
+              const rows: Array<{ address: string; role: number }> = [];
+              for (const field of dynFields.data) {
+                const dfObj = await client.getDynamicFieldObject({
+                  parentId: tableId,
+                  name: field.name,
+                });
+                const moveObj = dfObj.data?.content;
+                if (moveObj && moveObj.dataType === "moveObject" && "fields" in moveObj) {
+                  const fields = (moveObj as any).fields;
+                  if (fields?.key && fields?.value) {
+                    rows.push({ address: String(fields.key), role: Number(fields.value) });
+                  }
+                }
+              }
+              roleResults[task.id] = rows;
+            } catch (err) {
+              console.warn("Unable to fetch roles for task", task.id, err);
+            }
+          }
+          setRolesByTask(roleResults);
+        } else {
+          setRolesByTask({});
+        }
       } catch (error) {
         console.error("Error fetching tasks:", error);
         setTasks([]);
@@ -179,6 +214,7 @@ export const useTaskRegistry = (registryId: string | undefined) => {
 
   return {
     tasks,
+    rolesByTask,
     isLoading: isLoadingRegistry || isLoadingTasks,
     isError,
     refetch: async () => {

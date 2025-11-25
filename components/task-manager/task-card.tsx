@@ -10,10 +10,12 @@ import { Calendar, Share2, Hash, FileText, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 import { TaskItem } from "@/types";
 import { getPriorityLabel } from "@/helpers";
+import { Badge as RoleBadge } from "@/components/ui/badge";
 
 interface TaskCardProps {
     task: TaskItem;
     onSelect: (id: string) => void;
+    sharedRoles?: Array<{ address: string; role: number }>;
 }
 
 // Helper function to shorten address/object ID
@@ -23,12 +25,13 @@ const shortenAddress = (address: string, chars = 6): string => {
     return `${address.slice(0, chars)}...${address.slice(-chars)}`;
 };
 
-export const TaskCard = ({ task, onSelect }: TaskCardProps) => {
+export const TaskCard = ({ task, onSelect, sharedRoles }: TaskCardProps) => {
     const priorityInfo = getPriorityLabel(Number(task.priority));
     
     // Check for content and files - handle both array and object formats
     const hasContent = task.content_blob_id && task.content_blob_id.length > 0;
     const fileCount = Array.isArray(task.file_blob_ids) ? task.file_blob_ids.length : 0;
+    const sharedCount = sharedRoles?.length ?? 0;
     
     return (
         <Card
@@ -62,6 +65,11 @@ export const TaskCard = ({ task, onSelect }: TaskCardProps) => {
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                             <Hash className="h-3 w-3" />
                             <span className="font-mono">{shortenAddress(task.id, 8)}</span>
+                            {sharedCount > 0 && (
+                                <RoleBadge variant="secondary" className="ml-2">
+                                    Shared: {sharedCount}
+                                </RoleBadge>
+                            )}
                         </div>
                     </CardHeader>
                 </div>

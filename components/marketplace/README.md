@@ -1,247 +1,475 @@
-# Marketplace Purchase Flow Component
+# TaskOS - Product Requirements Document (PRD)
 
-This is a complete marketplace purchase flow implementation based on the design specification in `docs/MarketplaceFlow.md`.
+[![Live Demo](https://img.shields.io/badge/Demo-Live-success?style=for-the-badge&logo=netlify)](https://task-os.netlify.app/)
+[![Sui Network](https://img.shields.io/badge/Sui-Testnet-blue?style=for-the-badge&logo=sui)](https://suiexplorer.com/)
 
-## Components
+## 🎯 Project Overview
 
-### 1. `MarketplaceFlow.tsx` - Main Container
-The orchestrator component that manages the entire purchase flow state machine:
-- Browse marketplace
-- View experience details
-- Checkout process
-- Purchase confirmation
-- Data access
+A decentralized task management system built on the Sui blockchain, featuring role-based access control, encrypted content storage via Walrus, and SUI token rewards. This project enables secure, collaborative task management with on-chain verification and incentivization mechanisms.
 
-### 2. `SearchAndFilter.tsx` - Search & Filter Panel
-Provides filtering and search capabilities:
-- Full-text search
-- Skills filter (Backend, Frontend, AI/ML, DevOps, UI/UX, Data)
-- Domain filter (FinTech, Healthcare, E-commerce, SaaS, Web3)
-- Price range slider
-- Quality score minimum
-- Sort options (newest, most bought, highest rated, cheapest)
+### Vision
 
-### 3. `ExperienceCard.tsx` - Experience Preview Card
-Displays experience summary in grid view:
-- Skill and domain
-- Quality score with visual bar
-- Rating and statistics
-- Seller information
-- Price and CTA button
+Create a transparent, secure, and incentive-driven task management platform that leverages blockchain technology to ensure accountability, privacy, and fair compensation.
 
-### 4. `ExperienceDetailModal.tsx` - Detailed View
-Shows complete experience details:
-- Full description
-- Quality metrics
-- Seller information
-- License type selection (Personal, Commercial, AI Training)
-- What's included list
-- Pricing breakdown
+### 🚀 Live Deployment
 
-### 5. `CheckoutModal.tsx` - Checkout & Payment
-Handles the purchase transaction:
-- Order summary
-- Wallet information display
-- Payment method info (blockchain transaction)
-- Terms and conditions agreement
-- Error handling with retry
-- Processing state management
+- **Website:** [https://task-os.netlify.app/](https://task-os.netlify.app/)
+- **Network:** Sui Testnet
 
-### 6. `PurchaseConfirmation.tsx` - Success Screen
-Displays successful purchase confirmation:
-- Purchase ID and details
-- Transaction timestamp
-- Next steps instructions
-- Action buttons (Continue Shopping, View Data)
-
-### 7. `AccessDataModal.tsx` - Data Access & Decryption
-Integrates with SEAL and Walrus to access purchased data:
-- Access verification
-- Data decryption
-- Content display
-- Download and sharing options
-- Expiration notice
-
-### 8. `ErrorDisplay.tsx` - Common Error Component
-Reusable error display with:
-- Error message formatting
-- Technical details (collapsible)
-- Retry and dismiss actions
-
-## Types
-
-See `types.ts` for TypeScript interfaces:
-- `Experience` - Experience data structure
-- `PurchaseListing` - Purchase listing with license type
-- `AppError` - Error object structure
-- `ExperienceData` - Decrypted experience data
-
-## Usage
-
-### Basic Implementation
-
-```tsx
-import { MarketplaceFlow } from '@/components/marketplace';
-
-export default function MarketplacePage() {
-  return <MarketplaceFlow />;
-}
-```
-
-### With Custom Data
-
-```tsx
-import { MarketplaceFlow } from '@/components/marketplace';
-import { Experience } from '@/components/marketplace/types';
-
-const customExperiences: Experience[] = [
-  {
-    id: 'exp_1',
-    skill: 'Backend API Design',
-    domain: 'FinTech',
-    difficulty: 4,
-    quality_score: 92,
-    price: 250000000, // 0.25 SUI in Mist
-    seller: '0x2f4...',
-    rating: 4.8,
-    soldCount: 47,
-    walrus_blob_id: 'blob_xyz',
-    seal_policy_id: 'policy_xyz',
-  },
-  // ... more experiences
-];
-
-// Pass to component via props (requires modification to accept props)
-```
-
-## Purchase Flow
-
-```
-1. Browse Marketplace
-   ↓ (Select Experience)
-2. View Details + Choose License
-   ↓ (Proceed to Checkout)
-3. Checkout (Review + Approve)
-   ↓ (Complete Purchase)
-4. Payment Processing
-   ↓ (Transaction Confirmed)
-5. Purchase Confirmation ✓
-   ↓ (View Experience Data)
-6. Access Data (SEAL + Decryption)
-   ↓ (Data Decrypted)
-7. View Decrypted Experience Data ✓
-```
-
-## Integration Points
-
-### Required Hooks
-
-1. **useExperienceAccess** - Already exists in `hooks/useExperienceAccess.ts`
-   - Verifies access rights
-   - Decrypts data via SEAL
-   - Returns experience data
-
-2. **useMarketplace** - TODO: Needs implementation
-   - `purchaseExperience(experienceId, price)` - Execute purchase transaction
-   - Returns purchase ID on success
-
-### Environment Variables
+### 📝 Testnet Contract Addresses
 
 ```bash
-NEXT_PUBLIC_TASKOS_PACKAGE_ID=<your-package-id>
+NEXT_PUBLIC_PACKAGE_ID=0x087d18cee67a2328e35387c5cecb0a8a90a9ef76bade7a22e1e6f0b814cb2f3e
+NEXT_PUBLIC_TASKS_REGISTRY_ID=0xc232705c9006da731b18aa2e1e65ecab4314ab02b0cfc0b6f3d0d77fb8e95bbc
+NEXT_PUBLIC_PUBLISHER_ID=0xcb96b8f591a7f963a1323601a8cb4d0963f268cbba2021834453ac53b7ddc8ea
+NEXT_PUBLIC_VERSION_ID=0x66805cdae2fdab67618842c23797c597257a5a735034fa948d66a22264cdb7c1
 ```
 
-## Styling
+**Explorer Links:**
+- [Package on Sui Explorer](https://suiexplorer.com/object/0xd9a9971440976714e8b9fb6bc5f1aefbc9fca252612b1275c3e33d3c2774fec0?network=testnet)
+- [Task Registry](https://suiexplorer.com/object/0xed26a9cf9f93ac8f017ecd9853a91de5238dc71fdcccb940ee8f5ee2b100c1c9?network=testnet)
 
-The component uses CSS custom properties (CSS variables) for theming:
+---
 
-```css
---background
---foreground
---card
---border
---primary
---secondary
---muted
---muted-foreground
---accent
-```
+## 🏗️ Architecture
 
-These should be defined in your global CSS or use the existing theme variables.
+### Technology Stack
 
-## Features
+**Frontend:**
+- Next.js 16 (React 19)
+- TypeScript
+- Tailwind CSS
+- Radix UI Components
+- TanStack Query for state management
+- @mysten/dapp-kit for Sui integration
 
-### Implemented
-✅ Complete purchase flow state machine
-✅ Search and filtering
-✅ Experience cards with quality indicators
-✅ Detailed experience view
-✅ License type selection (Personal, Commercial, AI Training)
-✅ Checkout with order summary
-✅ Wallet integration display
-✅ Error handling and retry logic
-✅ Purchase confirmation
-✅ Data access with SEAL integration
-✅ Responsive design
-✅ TypeScript type safety
+**Blockchain:**
+- Sui Blockchain
+- Move Smart Contracts
+- Walrus Storage for encrypted content
+- Seal Protocol for identity-based encryption
 
-### TODO (Optional Enhancements)
-- [ ] Implement `useMarketplace` hook for actual blockchain transactions
-- [ ] Add pagination for experience grid
-- [ ] Implement actual filtering logic
-- [ ] Add experience reviews and ratings system
-- [ ] Implement seller profile page
-- [ ] Add purchase history page
-- [ ] Enable JSON download functionality
-- [ ] Add clipboard copy functionality
-- [ ] Implement related experiences recommendation
-- [ ] Add analytics tracking
+**Key Libraries:**
+- @mysten/sui - Sui TypeScript SDK
+- @mysten/walrus - Walrus storage integration
+- @dnd-kit - Drag and drop functionality
+- recharts - Data visualization
 
-## File Structure
+---
 
-```
-components/
-├── marketplace/
-│   ├── MarketplaceFlow.tsx        # Main container
-│   ├── SearchAndFilter.tsx        # Search & filter panel
-│   ├── ExperienceCard.tsx         # Experience card component
-│   ├── ExperienceDetailModal.tsx  # Detail modal
-│   ├── CheckoutModal.tsx          # Checkout modal
-│   ├── PurchaseConfirmation.tsx   # Success screen
-│   ├── AccessDataModal.tsx        # Data access screen
-│   ├── MarketplaceFlow.css        # All styles
-│   ├── types.ts                   # TypeScript types
-│   └── index.ts                   # Barrel exports
-└── common/
-    ├── ErrorDisplay.tsx           # Error component
-    └── index.ts                   # Barrel exports
-```
+## 📋 Core Features
 
-## Dependencies
+### 1. Task Management (CRUD Operations)
 
-```json
+**1.1 Task Creation**
+- **Fields:**
+  - Title (required, max 200 chars)
+  - Description (required, max 2000 chars)
+  - Category (required, max 50 chars)
+  - Tags (optional, max 10 tags, 30 chars each)
+  - Priority (Low/Medium/High/Critical)
+  - Due Date (optional)
+  - Image URL (optional)
+- **Technical:** Each task is an owned object on Sui blockchain
+- **Registry:** Tasks are indexed by status in a shared TaskRegistry for efficient querying
+
+**1.2 Task Updates**
+- Update basic info (title, description)
+- Change priority, status, category, due date
+- Add/remove tags
+- Archive tasks (soft delete)
+- Delete tasks (hard delete, owner only)
+
+**1.3 Task Status Workflow**
+- **TODO** → **IN PROGRESS** → **COMPLETED** → **ARCHIVED**
+- Status changes automatically update TaskRegistry indices
+- Real-time sync across all collaborators
+
+### 2. Role-Based Access Control (RBAC)
+
+**2.1 Role Hierarchy**
+- **Owner (Level 3):** Full control including deletion and access management
+- **Editor (Level 2):** Can edit tasks and add comments
+- **Viewer (Level 1):** Read-only access
+
+**2.2 Access Management**
+- Share tasks with multiple users
+- Assign specific roles to collaborators
+- Update or revoke user permissions
+- Owner cannot be removed or demoted
+
+### 3. Walrus Integration - Encrypted Content Storage
+
+**3.1 Content Encryption**
+- Upload encrypted task content to Walrus
+- Store blob IDs on-chain
+- Integrate with Seal protocol for IBE (Identity-Based Encryption)
+
+**3.2 File Attachments**
+- Support multiple file uploads
+- Store encrypted file blob IDs
+- Access control via blockchain verification
+
+**3.3 Decryption Flow**
+- Verify user access via smart contract
+- Use Seal IBE for secure decryption
+- Namespace-based access control
+
+### 4. Comments System
+
+**4.1 Comment Operations**
+- Add comments (Editor+ access required)
+- Edit own comments
+- Delete comments (author or owner)
+- Track comment creation and edit timestamps
+
+**4.2 Comment Structure**
+- Author address
+- Content (max 1000 chars)
+- Created timestamp
+- Last edited timestamp
+
+### 5. SUI Reward System
+
+**5.1 Reward Deposit**
+- Owners can deposit SUI tokens as task rewards
+- Track individual depositor contributions
+- Prevent deposits after task completion
+
+**5.2 Assignee Management**
+- Set task assignee
+- Only one assignee per task
+- Assignee eligible for reward upon completion
+
+**5.3 Reward Distribution**
+- Owner approves task completion
+- Automatic reward transfer to assignee
+- One-time approval (cannot re-approve)
+
+**5.4 Refund Mechanism**
+- Cancel task and refund all deposits
+- Proportional refunds to all depositors
+- Automatic refund on task deletion or archival
+
+### 6. On-Chain Query System
+
+**6.1 TaskRegistry**
+- Shared object for indexing tasks by status
+- Efficient on-chain queries for task discovery
+- Status-based task lists
+
+**6.2 Query Functions**
+- Get tasks by status
+- Count tasks by status
+- Real-time updates via events
+
+---
+
+## 🔐 Security & Validation
+
+### Input Validation
+- String length limits enforced on-chain
+- Priority and status value validation
+- Role permission checks
+- Prevent self-sharing and owner removal
+
+### Access Control
+- Permission checks on every mutation
+- Creator always has owner privileges
+- Dynamic field storage for access control lists
+
+### Financial Security
+- Balance tracking for deposits
+- Prevent double-approval of rewards
+- Refund mechanism for cancelled tasks
+- Amount validation (no zero deposits)
+
+---
+
+## 🎨 User Interface Components
+
+### Core Components
+- **Task Manager:** Main dashboard with drag-and-drop
+- **Task Cards:** Visual task representation
+- **Create/Update Forms:** Task CRUD operations
+- **Share Dialog:** Access management UI
+- **Comments Section:** Threaded discussions
+- **Reward Panel:** Deposit and approval interface
+- **Walrus Upload:** Encrypted file management
+
+### UI Features
+- Dark mode support
+- Responsive design
+- Real-time updates
+- Toast notifications
+- Data tables with sorting/filtering
+
+---
+
+## 📊 Data Model
+
+### Task Object
+```typescript
 {
-  "@mysten/dapp-kit": "^0.x.x",
-  "react": "^18.x.x"
+  id: UID,
+  creator: address,
+  title: String,
+  description: String,
+  image_url: String,
+  content_blob_id: Option<String>,
+  file_blob_ids: vector<String>,
+  created_at: u64,
+  updated_at: u64,
+  due_date: Option<u64>,
+  priority: u8,
+  status: u8,
+  category: String,
+  tags: vector<String>
 }
 ```
 
-## Notes
+### Dynamic Fields
+- **AccessControl:** Role mappings
+- **Comments:** Comment history
+- **RewardBalance:** SUI token balance
+- **Deposits:** Individual deposit tracking
+- **Assignee:** Task assignee address
+- **CompletionApproved:** Approval status
 
-- Mock data is currently used for experiences. Replace with actual API calls.
-- Purchase transaction is mocked. Implement with actual Sui blockchain calls.
-- CSS uses modern features (Grid, Flexbox, CSS Variables, Animations)
-- All components are responsive and mobile-friendly
-- Error states are handled gracefully with user-friendly messages
+---
 
-## License Types
+## 🚀 Getting Started
 
-| Type | Description | Price Multiplier |
-|------|-------------|------------------|
-| Personal | Personal use only. Cannot be shared or commercialized. | 1x |
-| Commercial | Use in commercial projects and products. Team sharing allowed. | 1.5x |
-| AI Training | License for AI model training and dataset creation. Unlimited use. | 2x |
+### Prerequisites
+1. Node.js 20+
+2. pnpm (recommended)
+3. Sui Wallet (for blockchain interactions)
+4. Sui CLI (for Move contract deployment)
 
-## Support
+### Environment Setup
 
-For issues or questions, please refer to the main documentation in `docs/MarketplaceFlow.md`.
+1. **Copy environment template:**
+```bash
+cp .env.example .env.local
+```
+
+2. **Configure environment variables:**
+```env
+NEXT_PUBLIC_PACKAGE_ID=<your_package_id>
+NEXT_PUBLIC_VERSION_ID=<your_version_object_id>
+NEXT_PUBLIC_TASK_REGISTRY_ID=<your_task_registry_id>
+```
+
+See [SETUP.md](./SETUP.md) for detailed deployment instructions.
+
+### Development Server
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Deploy Move Contracts
+
+```bash
+cd move/task_manage
+sui move build
+sui client publish --gas-budget 100000000
+```
+
+### Run Tests
+
+```bash
+# Move contract tests
+cd move/task_manage
+sui move test
+
+# TypeScript E2E tests
+pnpm test
+```
+
+---
+
+## 🧪 Testing
+
+### Move Contract Tests
+- Access control tests
+- CRUD operation tests
+- Reward system tests
+- Walrus integration tests
+
+### E2E Tests
+- Task creation workflow
+- Comment system
+- Update operations
+- Access sharing
+
+---
+
+## 📦 Project Structure
+
+```
+├── app/                    # Next.js app directory
+│   ├── dashboard/         # Main dashboard
+│   ├── login/            # Authentication
+│   └── walrus/           # Walrus integration demo
+├── components/            # React components
+│   ├── task-manager/     # Task management components
+│   └── ui/              # Reusable UI components
+├── move/                 # Sui Move contracts
+│   └── task_manage/
+│       ├── sources/      # Move source files
+│       └── tests/       # Move tests
+├── e2e/                  # End-to-end tests
+├── hooks/               # Custom React hooks
+├── lib/                 # Utility libraries
+└── types/              # TypeScript type definitions
+```
+
+---
+
+## 🔄 Workflows
+
+### Task Creation Flow
+1. User connects wallet
+2. Fills task form with required fields
+3. Transaction submitted to blockchain
+4. Task object created and assigned to user
+5. Task indexed in TaskRegistry
+6. TaskCreated event emitted
+
+### Collaboration Flow
+1. Owner shares task with collaborators
+2. Assigns appropriate roles (Viewer/Editor/Owner)
+3. Collaborators can view/edit based on permissions
+4. Comments and updates sync on-chain
+5. Access can be revoked by owner
+
+### Reward Flow
+1. Owner deposits SUI reward into task
+2. Owner assigns task to user
+3. Assignee completes work
+4. Assignee updates status to COMPLETED
+5. Owner approves completion
+6. Reward automatically transferred to assignee
+
+---
+
+## 🎯 Use Cases
+
+1. **Freelance Work:** Escrow-based task completion with automatic payments
+2. **Team Projects:** Collaborative task management with role-based access
+3. **Bounty Programs:** Public tasks with SUI rewards
+4. **Project Management:** Secure, transparent task tracking
+5. **DAO Operations:** Decentralized task assignment and compensation
+
+---
+
+## 🔮 Future Enhancements
+
+- [ ] Multi-assignee support
+- [ ] Milestone-based payments
+- [ ] Task templates
+- [ ] Advanced search and filtering
+- [ ] Mobile app
+- [ ] Integration with more wallets
+- [ ] NFT-based task achievements
+- [ ] Reputation system
+- [ ] Task dependencies and sub-tasks
+- [ ] Calendar view and notifications
+
+---
+
+## 📚 Documentation
+
+- [Setup Guide](./SETUP.md) - Detailed environment configuration
+- [Move Contract Documentation](./move/task_manage/readme.md) - Smart contract details
+- [Sui Documentation](https://docs.sui.io/) - Sui blockchain docs
+- [Walrus Documentation](https://docs.walrus.site/) - Walrus storage docs
+
+---
+
+## 👥 Collaborators
+
+This project was built by:
+
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/longphu25">
+<img src="https://github.com/longphu25.png" width="100px;" alt="Huỳnh Long Phú"/><br />
+<sub><b>Huỳnh Long Phú</b></sub>
+</a><br />
+<a href="https://t.me/longphu">💬 Telegram</a><br />
+<a href="mailto:longphu257@gmail.com">📧 Email</a>
+</td>
+<td align="center">
+<a href="https://github.com/teededung">
+<img src="https://github.com/teededung.png" width="100px;" alt="Nguyễn Tuấn Anh"/><br />
+<sub><b>Nguyễn Tuấn Anh</b></sub>
+</a><br />
+<a href="https://t.me/rongmauhong">💬 Telegram</a><br />
+<a href="mailto:rongmauhong@protonmail.com">📧 Email</a>
+</td>
+<td align="center">
+<a href="https://github.com/tpSpace">
+<img src="https://github.com/tpSpace.png" width="100px;" alt="Nguyễn Mạnh Việt Khôi"/><br />
+<sub><b>Nguyễn Mạnh Việt Khôi</b></sub>
+</a><br />
+<a href="https://t.me/Rocky2077">💬 Telegram</a><br />
+<a href="mailto:nmvkhoi@gmail.com">📧 Email</a>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a href="https://github.com/tuanhqv123">
+<img src="https://github.com/tuanhqv123.png" width="100px;" alt="Trần Anh Tuấn"/><br />
+<sub><b>Trần Anh Tuấn</b></sub>
+</a><br />
+<a href="https://t.me/tuanhqv123">💬 Telegram</a><br />
+<a href="mailto:tuantrungvuongk62@gmail.com">📧 Email</a>
+</td>
+<td align="center">
+<a href="https://github.com/lamdanghoang">
+<img src="https://github.com/lamdanghoang.png" width="100px;" alt="Đặng Hoàng Lâm"/><br />
+<sub><b>Đặng Hoàng Lâm</b></sub>
+</a><br />
+<a href="https://t.me/danghlam">💬 Telegram</a><br />
+<a href="mailto:danghlambk14@gmail.com">📧 Email</a>
+</td>
+<td></td>
+</tr>
+</table>
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is built for hackathon purposes. Please check with the repository owner for licensing details.
+
+---
+
+## 🆘 Support
+
+For setup issues, see [SETUP.md](./SETUP.md) troubleshooting section.
+
+For bugs or feature requests, please open an issue on GitHub.
+
+---
+
+Built with ❤️ on Sui Blockchain
+

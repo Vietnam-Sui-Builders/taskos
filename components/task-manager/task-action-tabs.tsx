@@ -8,6 +8,7 @@ import { ShareTask } from "./share-task";
 import { TaskUpdate } from "./task-update";
 import { TaskComments } from "./task-comments";
 import { TaskRewards } from "./task-rewards";
+import { TaskSubmitCompletion } from "./task-submit-completion";
 
 interface TaskActionTabsProps {
     taskId: string;
@@ -20,7 +21,7 @@ interface TaskActionTabsProps {
 export function TaskActionTabs({ taskId, className }: TaskActionTabsProps) {
     return (
         <Tabs defaultValue="view" className={cn("h-full flex flex-col", className)}>
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="view" className="cursor-pointer">
                     View
                 </TabsTrigger>
@@ -29,6 +30,9 @@ export function TaskActionTabs({ taskId, className }: TaskActionTabsProps) {
                 </TabsTrigger>
                 <TabsTrigger value="upload" className="cursor-pointer">
                     Content
+                </TabsTrigger>
+                <TabsTrigger value="submit" className="cursor-pointer">
+                    Submit
                 </TabsTrigger>
                 <TabsTrigger value="comments" className="cursor-pointer">
                     Comments
@@ -52,6 +56,10 @@ export function TaskActionTabs({ taskId, className }: TaskActionTabsProps) {
 
                 <TabsContent value="upload" className="h-full">
                     <TaskContentUpload taskId={taskId} />
+                </TabsContent>
+
+                <TabsContent value="submit" className="h-full">
+                    <TaskSubmitCompletion taskId={taskId} />
                 </TabsContent>
 
                 <TabsContent value="comments" className="h-full">

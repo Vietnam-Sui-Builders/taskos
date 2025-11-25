@@ -87,7 +87,8 @@ export const CreateTask = () => {
                 ? Math.floor(new Date(dueDate).getTime()) 
                 : null;
 
-            const task = tx.moveCall({
+            // Task is now a shared object, no need to capture return value or transfer
+            tx.moveCall({
                 target: `${packageId}::task_manage::create_task`,
                 arguments: [
                     tx.object(versionObjectId), // version: &Version
@@ -107,9 +108,6 @@ export const CreateTask = () => {
                     tx.object(taskRegistryId), // registry: &mut TaskRegistry
                 ],
             });
-
-            // Transfer the created task to the user
-            tx.transferObjects([task], account.address);
 
             const resp = await signAndExecuteTransaction({
                 transaction: tx,
