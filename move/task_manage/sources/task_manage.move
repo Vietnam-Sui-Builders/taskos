@@ -20,6 +20,7 @@ use sui::event;
 use sui::package;
 use sui::sui::SUI;
 use sui::table::{Self, Table};
+use task_manage::experience;
 use task_manage::version::{Self, Version};
 
 // ==================== One-Time Witness ====================
@@ -50,6 +51,9 @@ const EInvalidAmount: u64 = 17;
 const ENoAssignee: u64 = 18;
 const ETaskNotCompleted: u64 = 19;
 const EAlreadyApproved: u64 = 20;
+const EExperienceAlreadyMinted: u64 = 21;
+const ETaskNotApprovedForExperience: u64 = 22;
+const ENoResultForExperience: u64 = 23;
 
 // ==================== Constants ====================
 
@@ -88,6 +92,7 @@ public struct DepositsKey has copy, drop, store {}
 public struct DepositorsKey has copy, drop, store {}
 public struct AssigneeKey has copy, drop, store {}
 public struct CompletionApprovedKey has copy, drop, store {}
+public struct ExperienceMintKey has copy, drop, store {}
 
 // ==================== Core Structs ====================
 
@@ -1204,14 +1209,16 @@ public fun approve_completion(version: &Version, task: &mut Task, registry: &mut
         assert!(!approved, EAlreadyApproved);
     };
 
-    // Check if there's reward balance
-    assert!(df::exists_(&task.id, RewardBalanceKey {}), ENoRewardBalance);
-    let balance = df::remove<RewardBalanceKey, Balance<SUI>>(&mut task.id, RewardBalanceKey {});
-    let reward_amount = balance::value(&balance);
-
-    // Transfer reward to assignee
-    let reward_coin = coin::from_balance(balance, ctx);
-    sui::transfer::public_transfer(reward_coin, assignee);
+    // Transfer reward to assignee if present; otherwise allow zero-reward approvals
+    let reward_amount = if (df::exists_(&task.id, RewardBalanceKey {})) {
+        let balance = df::remove<RewardBalanceKey, Balance<SUI>>(&mut task.id, RewardBalanceKey {});
+        let amount = balance::value(&balance);
+        let reward_coin = coin::from_balance(balance, ctx);
+        sui::transfer::public_transfer(reward_coin, assignee);
+        amount
+    } else {
+        0
+    };
 
     // Update status to APPROVED and update registry
     let old_status = task.status;
@@ -1261,6 +1268,58 @@ public fun approve_completion(version: &Version, task: &mut Task, registry: &mut
         assignee,
         reward_amount,
     });
+}
+
+/// Mint an Experience NFT from an approved task.
+/// - Only the task owner can mint
+/// - Requires task.status == STATUS_APPROVED
+/// - Enforces one ExperienceNFT per task via dynamic field
+/// - Propagates Walrus content/result blob IDs and SEAL policy reference
+public fun mint_experience_from_task(
+    version: &Version,
+    task: &mut Task,
+    skill: String,
+    domain: String,
+    difficulty: u8,
+    time_spent: u64,
+    quality_score: u8,
+    seal_policy_id: String,
+    license_type: u8,
+    copy_limit: u64,
+    royalty_bps: u64,
+    price: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): ID {
+    version::check_is_valid(version);
+    let sender = tx_context::sender(ctx);
+
+    assert!(has_permission(task, sender, ROLE_OWNER), EInsufficientPermission);
+    assert!(task.status == STATUS_APPROVED, ETaskNotApprovedForExperience);
+    assert!(option::is_some(&task.result_blob_id), ENoResultForExperience);
+    assert!(!df::exists_(&task.id, ExperienceMintKey {}), EExperienceAlreadyMinted);
+
+    let experience_id = experience::generate_experience(
+        object::id(task),
+        sender,
+        skill,
+        domain,
+        difficulty,
+        time_spent,
+        quality_score,
+        task.content_blob_id,
+        task.result_blob_id,
+        seal_policy_id,
+        license_type,
+        copy_limit,
+        royalty_bps,
+        price,
+        ctx,
+    );
+
+    task.updated_at = clock::timestamp_ms(clock);
+    df::add(&mut task.id, ExperienceMintKey {}, experience_id);
+    experience_id
 }
 
 /// Refund all deposits (internal helper)
@@ -1401,6 +1460,16 @@ public fun get_category(task: &Task): String {
 
 public fun get_tags(task: &Task): vector<String> {
     task.tags
+}
+
+/// Returns the Experience NFT ID minted for this task (if any)
+public fun get_experience_id(task: &Task): Option<ID> {
+    if (df::exists_(&task.id, ExperienceMintKey {})) {
+        let experience_id = *df::borrow<ExperienceMintKey, ID>(&task.id, ExperienceMintKey {});
+        option::some(experience_id)
+    } else {
+        option::none<ID>()
+    }
 }
 
 /// Get user's role for a task (returns 0 if no access)

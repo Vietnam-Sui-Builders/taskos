@@ -36,41 +36,70 @@ export function useMarketplaceListings() {
         // Parse events to extract experience listings
         const experienceList: Experience[] = [];
 
+        const parseOptionString = (value: any): string => {
+          if (!value) return '';
+          if (typeof value === 'string') return value;
+          if (Array.isArray(value)) return value[0] || '';
+          if (typeof value === 'object' && 'vec' in value) {
+            const vecVal = (value as any).vec;
+            if (Array.isArray(vecVal)) return vecVal[0] || '';
+          }
+          return '';
+        };
+
         for (const event of events.data) {
           try {
             const eventData = event.parsedJson as Record<string, unknown>;
-            
-            // Fetch the actual experience object
-            if (eventData.experience_id) {
-              const experienceObj = await client.getObject({
-                id: eventData.experience_id as string,
-                options: { showContent: true },
-              });
+            const listingId = (eventData.listing_id as string) || '';
+            const experienceId = (eventData.experience_id as string) || '';
+            if (!listingId || !experienceId) continue;
 
-              if (
-                experienceObj.data?.content &&
-                'fields' in experienceObj.data.content
-              ) {
-                const fields = experienceObj.data.content.fields as Record<string, unknown>;
+            // Fetch listing for price/seller/copies
+            const listingObj = await client.getObject({
+              id: listingId,
+              options: { showContent: true },
+            });
 
-                const experience: Experience = {
-                  id: experienceObj.data.objectId,
-                  skill: String(fields.skill || 'Unknown Skill'),
-                  domain: String(fields.domain || 'General'),
-                  difficulty: parseInt(String(fields.difficulty || '3')),
-                  quality_score: parseInt(String(fields.quality_score || '80')),
-                  price: parseInt(String(fields.price || '100000000')), // Default 0.1 SUI
-                  seller: String(fields.owner || fields.creator || '0x...'),
-                  rating: Number(fields.rating || 4.5),
-                  soldCount: parseInt(String(fields.sold_count || '0')),
-                  walrus_blob_id: String(fields.walrus_blob_id || ''),
-                  seal_policy_id: String(fields.seal_policy_id || ''),
-                  timeSpent: parseInt(String(fields.time_spent || '3600')),
-                };
+            const listingFields =
+              listingObj.data?.content?.dataType === 'moveObject'
+                ? (listingObj.data.content.fields as Record<string, any>)
+                : null;
 
-                experienceList.push(experience);
-              }
-            }
+            // Fetch experience for metadata
+            const experienceObj = await client.getObject({
+              id: experienceId,
+              options: { showContent: true },
+            });
+
+            const expFields =
+              experienceObj.data?.content?.dataType === 'moveObject'
+                ? (experienceObj.data.content.fields as Record<string, any>)
+                : null;
+
+            if (!expFields || !listingFields) continue;
+
+            const ratingCount = Number(expFields.rating_count || 0);
+            const totalRating = Number(expFields.total_rating || 0);
+            const avgRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+            const walrusContent = parseOptionString(expFields.walrus_content_blob_id);
+            const walrusResult = parseOptionString(expFields.walrus_result_blob_id);
+
+            const experience: Experience = {
+              id: experienceObj.data!.objectId,
+              skill: String(expFields.skill || 'Unknown Skill'),
+              domain: String(expFields.domain || 'General'),
+              difficulty: parseInt(String(expFields.difficulty || '3')),
+              quality_score: parseInt(String(expFields.quality_score || '80')),
+              price: Number(listingFields.price || expFields.price || 0),
+              seller: String(listingFields.seller || expFields.creator || '0x...'),
+              rating: avgRating,
+              soldCount: parseInt(String(expFields.sold_count || '0')),
+              walrus_blob_id: walrusContent || walrusResult || '',
+              seal_policy_id: String(expFields.seal_policy_id || ''),
+              timeSpent: parseInt(String(expFields.time_spent || '3600')),
+            };
+
+            experienceList.push(experience);
           } catch (err) {
             console.warn('Error parsing experience event:', err);
           }

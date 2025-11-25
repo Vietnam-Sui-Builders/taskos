@@ -10,7 +10,7 @@ export interface Task {
     updated_at: string;
     due_date: string;
     priority: number;
-    status: number; // 0=TODO, 1=IN_PROGRESS, 2=COMPLETED, 3=ARCHIVED
+    status: number; // 0=TODO, 1=IN_PROGRESS, 2=COMPLETED, 3=APPROVED, 4=ARCHIVED
     category: string;
     tags: string[];
     // Dynamic fields (may not always be present)
@@ -65,7 +65,8 @@ export const ROLE_OWNER = 3;
 export const STATUS_TODO = 0;
 export const STATUS_IN_PROGRESS = 1;
 export const STATUS_COMPLETED = 2;
-export const STATUS_ARCHIVED = 3;
+export const STATUS_APPROVED = 3;
+export const STATUS_ARCHIVED = 4;
 
 // Priority constants
 export const PRIORITY_LOW = 1;

@@ -7,6 +7,15 @@ interface PurchaseExperienceParams {
   paymentAmount: number;
 }
 
+type LicenseOption = 'personal' | 'commercial' | 'exclusive' | 'subscription' | 'view_only';
+
+interface ListExperienceParams {
+  experienceId: string;
+  price: number;
+  licenseType: LicenseOption;
+  copies: number;
+}
+
 export function useMarketplace() {
   const client = useSuiClient();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
@@ -73,12 +82,25 @@ export function useMarketplace() {
    * Based on: docs/integration-logic-module.md - Interaction 5
    */
   const listExperience = async (
-    experienceId: string,
-    price: number
+    params: ListExperienceParams
   ): Promise<string> => {
     if (!taskosPackageId) {
       throw new Error('TASKOS_PACKAGE_ID is not configured');
     }
+
+    if (params.copies <= 0) {
+      throw new Error('Copies must be greater than zero');
+    }
+
+    const licenseMap: Record<LicenseOption, number> = {
+      personal: 0,
+      commercial: 1,
+      exclusive: 2,
+      subscription: 3,
+      view_only: 4,
+    };
+
+    const licenseValue = licenseMap[params.licenseType];
 
     setIsProcessing(true);
 
@@ -88,7 +110,12 @@ export function useMarketplace() {
       // Call marketplace::list_experience
       tx.moveCall({
         target: `${taskosPackageId}::marketplace::list_experience`,
-        arguments: [tx.object(experienceId), tx.pure.u64(price)],
+        arguments: [
+          tx.object(params.experienceId),
+          tx.pure.u64(params.price),
+          tx.pure.u8(licenseValue),
+          tx.pure.u64(params.copies),
+        ],
       });
 
       const response = await signAndExecute({

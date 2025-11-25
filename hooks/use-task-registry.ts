@@ -8,6 +8,7 @@ import { useMemo } from "react";
 const STATUS_TODO = 0;
 const STATUS_IN_PROGRESS = 1;
 const STATUS_COMPLETED = 2;
+const STATUS_APPROVED = 3;
 
 // Helper function to convert Move task data to TaskItem
 const convertToTaskItem = (taskObject: SuiObjectResponse): TaskItem | null => {
@@ -37,7 +38,7 @@ const convertToTaskItem = (taskObject: SuiObjectResponse): TaskItem | null => {
       title: String(fields.title || ""),
       description: String(fields.description || ""),
       creator: String(fields.creator || ""),
-      is_completed: status === STATUS_COMPLETED,
+      is_completed: status === STATUS_COMPLETED || status === STATUS_APPROVED,
       created_at: new Date(parseInt(createdAt)).toISOString(),
       due_date: dueDate?.vec?.[0]
         ? new Date(parseInt(dueDate.vec[0])).toISOString()

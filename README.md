@@ -19,15 +19,15 @@ Create a transparent, secure, and incentive-driven task management platform that
 ### 📝 Testnet Contract Addresses
 
 ```bash
-NEXT_PUBLIC_PACKAGE_ID=0x3ec252316a2d35122978c2c5e3839bd0c4acfd34abde5217b92ebeb943199e1e
-NEXT_PUBLIC_TASKS_REGISTRY_ID=0xd3d7b9d4dd5466a17d8f60d07fd8f84e162586e0eae6a0004f90ad1aa47be238
-NEXT_PUBLIC_PUBLISHER_ID=0x6d36f30a594e6a588de5fd042b6c6bfef4e32764bf5e5229896bd5ac751915a7
-NEXT_PUBLIC_VERSION_ID=0x2615265ddcde07d972f73063fab6dee1447c46968768deb5344730a9e831b499
+NEXT_PUBLIC_PACKAGE_ID=0xab3391334f011cf749b2295d60f4aadb0bc73e1d471d16974d6815311a565ab7
+NEXT_PUBLIC_TASKS_REGISTRY_ID=0xf7b8e469133b3bc3d232cbc337beed48d9686b6869c4f389f10f8ebd346d6895
+NEXT_PUBLIC_PUBLISHER_ID=0x5227287b16661b678e10a66cd5827a519374603b716a24002344fbb75f3b5da0
+NEXT_PUBLIC_VERSION_ID=0xeb678bdb576d4aaf7e2489295ec2c96f6520b6fe86f2dacec33edc37e07518d6
 ```
 
 **Explorer Links:**
-- [Package on Sui Explorer](https://suiexplorer.com/object/0xd9a9971440976714e8b9fb6bc5f1aefbc9fca252612b1275c3e33d3c2774fec0?network=testnet)
-- [Task Registry](https://suiexplorer.com/object/0xed26a9cf9f93ac8f017ecd9853a91de5238dc71fdcccb940ee8f5ee2b100c1c9?network=testnet)
+- [Package on Sui Explorer](https://suiexplorer.com/object/0x3ec252316a2d35122978c2c5e3839bd0c4acfd34abde5217b92ebeb943199e1e?network=testnet)
+- [Task Registry](https://suiexplorer.com/object/0xd3d7b9d4dd5466a17d8f60d07fd8f84e162586e0eae6a0004f90ad1aa47be238?network=testnet)
 
 ---
 
@@ -81,7 +81,8 @@ NEXT_PUBLIC_VERSION_ID=0x2615265ddcde07d972f73063fab6dee1447c46968768deb5344730a
 - Delete tasks (hard delete, owner only)
 
 **1.3 Task Status Workflow**
-- **TODO** → **IN PROGRESS** → **COMPLETED** → **ARCHIVED**
+- **TODO** → **IN PROGRESS** → **COMPLETED** → **APPROVED** → **ARCHIVED**
+- Approval is a distinct on-chain step that triggers reward release
 - Status changes automatically update TaskRegistry indices
 - Real-time sync across all collaborators
 
@@ -102,7 +103,7 @@ NEXT_PUBLIC_VERSION_ID=0x2615265ddcde07d972f73063fab6dee1447c46968768deb5344730a
 
 **3.1 Content Encryption**
 - Upload encrypted task content to Walrus
-- Store blob IDs on-chain
+- Store blob IDs on-chain (content, attachments, completed result)
 - Integrate with Seal protocol for IBE (Identity-Based Encryption)
 
 **3.2 File Attachments**
@@ -142,7 +143,7 @@ NEXT_PUBLIC_VERSION_ID=0x2615265ddcde07d972f73063fab6dee1447c46968768deb5344730a
 - Assignee eligible for reward upon completion
 
 **5.3 Reward Distribution**
-- Owner approves task completion
+- Owner approves task completion (status moves to APPROVED)
 - Automatic reward transfer to assignee
 - One-time approval (cannot re-approve)
 
@@ -162,6 +163,14 @@ NEXT_PUBLIC_VERSION_ID=0x2615265ddcde07d972f73063fab6dee1447c46968768deb5344730a
 - Get tasks by status
 - Count tasks by status
 - Real-time updates via events
+
+### 7. Experience Data & Marketplace
+
+- Generate Experience NFTs from approved tasks with Walrus/Seal references
+- List experience data for sale with license types and copy limits
+- Purchase flow emits on-chain events and tracks access provisioning
+- SEAL policies support private, allowlist, and subscription access patterns
+- Ratings and price updates supported post-mint
 
 ---
 
@@ -218,11 +227,13 @@ NEXT_PUBLIC_VERSION_ID=0x2615265ddcde07d972f73063fab6dee1447c46968768deb5344730a
   image_url: String,
   content_blob_id: Option<String>,
   file_blob_ids: vector<String>,
+  result_blob_id: Option<String>,
   created_at: u64,
   updated_at: u64,
   due_date: Option<u64>,
   priority: u8,
-  status: u8,
+  status: u8, // 0 TODO, 1 IN_PROGRESS, 2 COMPLETED, 3 APPROVED, 4 ARCHIVED
+  visibility: u8, // 0 private, 1 team, 2 public
   category: String,
   tags: vector<String>
 }
@@ -257,7 +268,7 @@ cp .env.example .env.local
 ```env
 NEXT_PUBLIC_PACKAGE_ID=<your_package_id>
 NEXT_PUBLIC_VERSION_ID=<your_version_object_id>
-NEXT_PUBLIC_TASK_REGISTRY_ID=<your_task_registry_id>
+NEXT_PUBLIC_TASKS_REGISTRY_ID=<your_task_registry_id>
 ```
 
 See [SETUP.md](./SETUP.md) for detailed deployment instructions.
@@ -472,4 +483,3 @@ For bugs or feature requests, please open an issue on GitHub.
 ---
 
 Built with ❤️ on Sui Blockchain
-

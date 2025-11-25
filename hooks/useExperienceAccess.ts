@@ -2,7 +2,7 @@
 // Purpose: React hook to manage experience data access flow
 
 import { useState, useEffect } from 'react';
-import { useWallet } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSignPersonalMessage } from '@mysten/dapp-kit';
 import { getSEALPolicy, checkAccess, requestDecryptionKey, decryptionKeyCache } from '../services/sealService';
 import { downloadAndDecryptBlob, parseExperienceData } from '../services/walrusService';
 
@@ -20,7 +20,8 @@ export function useExperienceAccess(
   experienceId: string,
   taskosPackageId: string
 ) {
-  const { currentAccount, signPersonalMessage } = useWallet();
+  const currentAccount = useCurrentAccount();
+  const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
   const [state, setState] = useState<ExperienceAccessState>({
     loading: true,
     error: null,
@@ -70,15 +71,13 @@ export function useExperienceAccess(
 
       if (!decryptionKey) {
         // No cached key - request from SEAL (requires wallet approval)
-        const wallet = {
-          signPersonalMessage: (msg) =>
-            signPersonalMessage({ message: msg.message }),
-        };
-
         decryptionKey = await requestDecryptionKey(
           policy.seal_policy_id,
           currentAccount!.address,
-          wallet
+          {
+            signPersonalMessage: (msg) =>
+              signPersonalMessage({ message: msg.message }),
+          }
         );
 
         // Cache the key

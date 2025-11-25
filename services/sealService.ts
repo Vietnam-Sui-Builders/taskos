@@ -2,9 +2,7 @@
 // File: frontend/src/services/sealService.ts
 // Purpose: Query SEAL policies, request decryption keys, manage access
 
-import { SuiClient, getFullnodeUrl } from '@mysten/sui.js/client';
-import { SuiEvent } from '@mysten/sui.js/types';
-import { signPersonalMessage } from '@mysten/sui.js/sdk';
+import { SuiClient, getFullnodeUrl, type SuiEvent } from "@mysten/sui/client";
 
 interface SEALPolicy {
   id: string;

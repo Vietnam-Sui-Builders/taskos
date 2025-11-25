@@ -1,9 +1,10 @@
 // File: frontend/src/services/walrusService.ts
 // Purpose: Upload encrypted data to Walrus, retrieve and decrypt
 
-import { WalrusClient } from '@hibernuts/walrus-sdk';
-import * as crypto from 'tweetnacl';
-import { Box } from 'tweetnacl';
+import { WalrusClient } from "@mysten/walrus";
+import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
+import * as crypto from "tweetnacl";
+import { Box } from "tweetnacl";
 
 interface WalrusUploadResult {
   blobId: string;
@@ -16,10 +17,14 @@ interface WalrusDownloadResult {
   decryptedData?: string;
 }
 
-// Initialize Walrus client (connected to public nodes)
+// Initialize Walrus client (read-only by default)
+const suiClient = new SuiClient({
+  url: process.env.NEXT_PUBLIC_SUI_RPC_URL || getFullnodeUrl("testnet"),
+});
+
 const walrusClient = new WalrusClient({
-  aggregatorUrl: 'https://aggregator.walrus.space/',
-  epochs: 3, // Store for 3 epochs by default
+  network: "testnet",
+  suiClient,
 });
 
 /**
@@ -88,24 +93,23 @@ export async function uploadEncryptedBlob(
     // 1. Encrypt on client
     const { encryptedData, nonce, key } = await encryptDataClient(plaintext);
 
-    // 2. Upload encrypted blob to Walrus
-    const { blobId } = await walrusClient.writeBlob({
-      blob: Buffer.from(encryptedData),
-      deletable: true,
-      epochs,
-    });
+    // 2. Upload encrypted blob to Walrus requires a signer; not wired in this frontend build.
+    //    For now, surface a clear error so build succeeds without @hibernuts/walrus-sdk.
+    throw new Error(
+      "Walrus upload requires a signer; integrate @mysten/walrus writeBlob with a wallet signer or use a backend uploader."
+    );
 
-    console.log(`✓ Blob uploaded to Walrus: ${blobId}`);
-
-    // 3. Return blob ID + encryption metadata
-    return {
-      blobId,
-      encryptionKey: Buffer.from(key).toString('hex'),
-      nonce: Buffer.from(nonce).toString('hex'),
-    };
+    // If you integrate a signer, use:
+    // const { blobId } = await walrusClient.writeBlob({
+    //   blob: Buffer.from(encryptedData),
+    //   deletable: true,
+    //   epochs,
+    //   signer,
+    // });
+    // return { blobId, encryptionKey: Buffer.from(key).toString('hex'), nonce: Buffer.from(nonce).toString('hex') };
   } catch (error) {
-    console.error('Walrus upload failed:', error);
-    throw new Error(`Failed to upload blob: ${error.message}`);
+    console.error("Walrus upload failed:", error);
+    throw new Error(`Failed to upload blob: ${(error as Error).message}`);
   }
 }
 
@@ -126,9 +130,7 @@ export async function downloadAndDecryptBlob(
       console.log(`Attempting to download blob ${blobId} (attempt ${attempt}/${retries})`);
 
       // 1. Download encrypted blob from Walrus
-      const encryptedData = await walrusClient.readBlob({
-        blobId,
-      });
+      const encryptedData = await walrusClient.readBlob({ blobId });
 
       // 2. Decode encryption metadata
       const encryptionKey = new Uint8Array(Buffer.from(encryptionKeyHex, 'hex'));
