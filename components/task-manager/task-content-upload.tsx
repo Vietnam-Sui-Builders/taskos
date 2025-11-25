@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
+import { useState, useEffect, useMemo } from "react";
+import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount, useSuiClientQuery, useSignPersonalMessage } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
+import { fromB64 } from "@mysten/sui/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { SerializedEditorState } from "lexical";
@@ -19,10 +20,15 @@ import {
     DialogDescription,
     DialogClose,
 } from "@/components/ui/dialog";
+import * as nacl from "tweetnacl";
 
 interface TaskContentUploadProps {
     taskId?: string;
 }
+
+const WALRUS_KEY_MESSAGE = "TaskOS Walrus encryption key";
+const ENCRYPTION_TAG = new TextEncoder().encode("TOS-ENC1");
+const NONCE_LENGTH = nacl.secretbox.nonceLength;
 
 export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     const [content, setContent] = useState("");
@@ -58,6 +64,7 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     const suiClient = useSuiClient();
     const queryClient = useQueryClient();
     const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+    const { mutateAsync: signPersonalMessage } = useSignPersonalMessage();
 
     // Fetch task from blockchain
     const { data: taskData } = useSuiClientQuery(
@@ -77,10 +84,94 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     const fields = taskData?.data?.content?.dataType === "moveObject" 
         ? (taskData.data.content.fields as Record<string, unknown>)
         : null;
+    const visibility = typeof fields?.visibility === "number"
+        ? (fields.visibility as number)
+        : Number(fields?.visibility ?? 0);
+    const isPublicTask = visibility === 2;
     
     // Extract blob IDs - content_blob_id comes as string directly when populated
     const existingContentBlobId = (fields?.content_blob_id as string) || "";
     const existingFileBlobIds = (fields?.file_blob_ids as string[]) || [];
+
+    // Derive symmetric key bound to the connected wallet (prevents other wallets from decrypting)
+    const deriveWalrusKey = useMemo(() => {
+        return async () => {
+            if (!account) {
+                throw new Error("Connect a wallet to derive the encryption key");
+            }
+            const message = new TextEncoder().encode(`${WALRUS_KEY_MESSAGE}:${account.address.toLowerCase()}`);
+            const { signature } = await signPersonalMessage({ message });
+            const signatureBytes = fromB64(signature);
+            const digest = await crypto.subtle.digest("SHA-256", signatureBytes);
+            return new Uint8Array(digest);
+        };
+    }, [account, signPersonalMessage]);
+
+    // Encrypt bytes with wallet-derived key and prepend tag + nonce for transport
+    const encryptBytes = (bytes: Uint8Array, key?: Uint8Array): Uint8Array => {
+        if (!key) return bytes;
+        const nonce = nacl.randomBytes(NONCE_LENGTH);
+        const cipher = nacl.secretbox(bytes, nonce, key);
+        if (!cipher) {
+            throw new Error("Failed to encrypt data");
+        }
+        const payload = new Uint8Array(ENCRYPTION_TAG.length + nonce.length + cipher.length);
+        payload.set(ENCRYPTION_TAG, 0);
+        payload.set(nonce, ENCRYPTION_TAG.length);
+        payload.set(cipher, ENCRYPTION_TAG.length + nonce.length);
+        return payload;
+    };
+
+    // Decrypt bytes that contain [tag? || nonce || ciphertext]
+    // expectEncrypted=true ensures non-tagged payloads (legacy format nonce||cipher) also require the creator wallet
+    const decryptBytes = (
+        payload: Uint8Array,
+        key: Uint8Array | undefined,
+        options: { expectEncrypted: boolean; softFail?: boolean }
+    ): Uint8Array | null => {
+        const { expectEncrypted, softFail } = options;
+        const hasTag =
+            payload.length > ENCRYPTION_TAG.length + NONCE_LENGTH &&
+            ENCRYPTION_TAG.every((byte, idx) => payload[idx] === byte);
+
+        const tryDecrypt = (offset: number): Uint8Array | null => {
+            if (payload.length <= offset + NONCE_LENGTH) {
+                return null;
+            }
+            const nonce = payload.slice(offset, offset + NONCE_LENGTH);
+            const cipher = payload.slice(offset + NONCE_LENGTH);
+            const plaintext = key ? nacl.secretbox.open(cipher, nonce, key) : null;
+            return plaintext ? new Uint8Array(plaintext) : null;
+        };
+
+        // Public/plaintext path
+        if (!key) {
+            if (!expectEncrypted || !hasTag) {
+                return payload;
+            }
+            if (softFail) return null;
+            throw new Error("This blob is encrypted and requires the owner wallet to view.");
+        }
+
+        // Tagged payload (new format)
+        if (hasTag) {
+            const decrypted = tryDecrypt(ENCRYPTION_TAG.length);
+            if (decrypted) return decrypted;
+            if (softFail) return null;
+            throw new Error("Unable to decrypt data with this wallet");
+        }
+
+        // Legacy encrypted payload assumed as [nonce || cipher]
+        if (expectEncrypted) {
+            const decrypted = tryDecrypt(0);
+            if (decrypted) return decrypted;
+            if (softFail) return null;
+            throw new Error("Unable to decrypt data with this wallet");
+        }
+
+        // Not expected to be encrypted; return raw
+        return payload;
+    };
 
     // Cleanup blob URLs
     useEffect(() => {
@@ -155,35 +246,70 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     };
 
     const handleViewContent = async () => {
+        if (!account && !isPublicTask) {
+            toast.error("Connect the creator wallet to view encrypted content");
+            return;
+        }
+
         setIsLoadingContent(true);
         setDecryptedContent("");
         setDecryptedFiles([]);
         
         try {
+            const encryptionKey = isPublicTask ? undefined : await deriveWalrusKey();
+            let localContent = "";
+            let localFiles: Array<{ name: string; url: string; type: string; blobId: string }> = [];
+            let hadDecryptFailure = false;
+
             // Fetch content blob if available
             if (existingContentBlobId) {
                 try {
                     console.log("[TaskContentUpload] Fetching content blob:", existingContentBlobId);
-                    const contentBytes = await getWalrusBlob(existingContentBlobId);
-                    const textDecoder = new TextDecoder();
-                    const contentText = textDecoder.decode(contentBytes);
-                    setDecryptedContent(contentText);
+                    const encryptedBytes = await getWalrusBlob(existingContentBlobId);
+                    const decryptedBytes = decryptBytes(encryptedBytes, encryptionKey, {
+                        expectEncrypted: !isPublicTask,
+                        softFail: true,
+                    });
+                    if (!decryptedBytes) {
+                        hadDecryptFailure = true;
+                        toast.error("Connect the creator wallet to view encrypted content");
+                    } else {
+                        const textDecoder = new TextDecoder();
+                        localContent = textDecoder.decode(decryptedBytes);
+                    }
                 } catch (err) {
                     console.error("Error fetching content:", err);
-                    toast.error("Failed to load content", {
-                        description: err instanceof Error ? err.message : "Unknown error"
-                    });
+                    const message =
+                        err instanceof Error ? err.message : "Unknown error";
+                    if (
+                        message.includes("requires the owner wallet") ||
+                        message.includes("Unable to decrypt")
+                    ) {
+                        toast.error("Connect the creator wallet to view encrypted content");
+                        hadDecryptFailure = true;
+                    } else {
+                        toast.error("Failed to load content", {
+                            description: message,
+                        });
+                    }
                 }
             }
 
             // Fetch files if available
             if (existingFileBlobIds.length > 0) {
-                const files: Array<{ name: string; url: string; type: string; blobId: string }> = [];
-                
                 for (let i = 0; i < existingFileBlobIds.length; i++) {
                     const blobId = existingFileBlobIds[i];
                     try {
-                        const fileBytes = await getWalrusBlob(blobId);
+                        const encryptedFileBytes = await getWalrusBlob(blobId);
+                        const fileBytes = decryptBytes(encryptedFileBytes, encryptionKey, {
+                            expectEncrypted: !isPublicTask,
+                            softFail: true,
+                        });
+                        if (!fileBytes) {
+                            hadDecryptFailure = true;
+                            toast.error("Connect the creator wallet to view encrypted content");
+                            break;
+                        }
                         
                         let mimeType = "application/octet-stream";
                         let fileName = `File ${i + 1}`;
@@ -213,17 +339,36 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                         const blob = new Blob([new Uint8Array(fileBytes)], { type: mimeType });
                         const url = URL.createObjectURL(blob);
                         
-                        files.push({ name: fileName, url, type: mimeType, blobId });
+                        localFiles.push({ name: fileName, url, type: mimeType, blobId });
                     } catch (err) {
                         console.error(`Error processing file ${i + 1}:`, err);
-                        toast.error(`Failed to load file ${i + 1}`);
+                        const message =
+                            err instanceof Error ? err.message : "Unknown error";
+                        if (
+                            message.includes("requires the owner wallet") ||
+                            message.includes("Unable to decrypt")
+                        ) {
+                            toast.error("Connect the creator wallet to view encrypted content");
+                            hadDecryptFailure = true;
+                            // Stop trying further files; they will also fail
+                            break;
+                        } else {
+                            toast.error(`Failed to load file ${i + 1}`, {
+                                description: message,
+                            });
+                        }
                     }
                 }
                 
-                setDecryptedFiles(files);
+                setDecryptedFiles(localFiles);
             }
 
-            setIsDialogOpen(true);
+            setDecryptedContent(localContent);
+
+            // Only open dialog if we have something to show or no decrypt errors
+            if (!hadDecryptFailure || localContent || localFiles.length > 0) {
+                setIsDialogOpen(true);
+            }
         } catch (err) {
             console.error("Error viewing content:", err);
             toast.error("Failed to load content");
@@ -233,7 +378,7 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
     };
 
     const handleUpload = async () => {
-        if (!taskId || !account) {
+        if (!taskId || (!account && !isPublicTask)) {
             toast.error("Task ID or account not available");
             return;
         }
@@ -252,6 +397,8 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
             const tx = new Transaction();
             let contentBlobId: string | null = null;
             const fileBlobIds: string[] = [];
+            const shouldEncrypt = !isPublicTask;
+            const encryptionKey = shouldEncrypt ? await deriveWalrusKey() : undefined;
 
             // Helper to sign & execute transactions using connected wallet
             const signTransactionWithWallet = async (txToSign: Transaction) => {
@@ -266,14 +413,15 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                     const contentBlob = new Blob([content], { type: 'text/plain' });
                     const arrayBuffer = await contentBlob.arrayBuffer();
                     const bytes = new Uint8Array(arrayBuffer);
+                    const encryptedBytes = encryptBytes(bytes, encryptionKey);
 
                     console.log("[TaskContentUpload] Uploading content to Walrus", {
-                        size: bytes.length,
+                        size: encryptedBytes.length,
                     });
 
                     // Upload using Walrus SDK flow
                     const result = await uploadWalrusFileWithFlow(
-                        bytes,
+                        encryptedBytes,
                         signTransactionWithWallet,
                         account.address,
                         {
@@ -303,15 +451,16 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                         // Convert File to Uint8Array
                         const arrayBuffer = await file.arrayBuffer();
                         const bytes = new Uint8Array(arrayBuffer);
+                        const encryptedBytes = encryptBytes(bytes, encryptionKey);
 
                         console.log("[TaskContentUpload] Uploading file to Walrus", {
                             fileName: file.name,
-                            size: bytes.length,
+                            size: encryptedBytes.length,
                         });
 
                         // Upload using Walrus SDK flow
                         const result = await uploadWalrusFileWithFlow(
-                            bytes,
+                            encryptedBytes,
                             signTransactionWithWallet,
                             account.address,
                             {
