@@ -12,32 +12,40 @@ import {
   Mail,
   Twitter,
   Github,
+  Shield,
+  Cpu,
+  Globe,
+  Lock,
+  RefreshCw,
+  TrendingUp,
+  Layers,
+  FileText,
 } from "lucide-react";
 
 const featureItems = [
   {
-    title: "Create tasks, store on SUI - file on Walrus",
+    title: "Decentralized Task Distribution",
     description:
-      "Every task writes to verifiable Walrus storage so progress is always auditable and recoverable.",
+      "Create private, team-only, or public tasks with built-in reward escrow and approval flows.",
+    icon: Globe,
+  },
+  {
+    title: "Experience Data Assets",
+    description:
+      "Completed tasks become standardized, ownable data objects with rich metadata and quality scores.",
     icon: Database,
   },
   {
-    title: "Share tasks instantly",
+    title: "Secure Data Economy",
     description:
-      "Invite contributors with a link. Collaborators see the on-chain state in real time.",
-    icon: Share2,
+      "Encrypted storage with programmable access control (private, allowlist, subscription).",
+    icon: Shield,
   },
   {
-    title: "Plan with an AI co-pilot",
+    title: "AI Composability",
     description:
-      "Auto-generate checklists, dependencies, and schedules tailored to your team’s flow.",
-    icon: Sparkles,
-  },
-  {
-    title: "Prize pools for completion",
-    description:
-      "Stake incentives and release rewards automatically when tasks are marked done.",
-    icon: Trophy,
+      "Plug experience datasets directly into AI pipelines, knowledge bases, and benchmarking tools.",
+    icon: Cpu,
   },
 ];
 
@@ -93,58 +101,74 @@ const MoveGlyph = () => (
 const techStack = [
   {
     name: "Sui",
-    description: "High-throughput execution so updates feel instant.",
+    description: "High-throughput ownership layer for experience assets.",
     logo: (
-      <img
-        src="https://cdn.prod.website-files.com/6425f546844727ce5fb9e5ab/659d970f53d2997773cf1db1_emblem-sui-d.svg"
-        alt="Sui logo"
-        className="h-12 w-12 rounded-full border border-black/10 bg-white p-1 shadow-sm"
-      />
+      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-blue-500/50 bg-blue-950/50 p-2 shadow-[0_0_15px_rgba(77,162,255,0.3)]">
+        <img
+          src="https://cdn.prod.website-files.com/6425f546844727ce5fb9e5ab/659d970f061dbfe7ca0e47c0_emblem-sui-w.svg"
+          alt="Sui logo"
+          className="h-full w-full object-contain"
+        />
+      </div>
     ),
   },
   {
     name: "Walrus",
-    description: "Tamper-proof object storage powering our task archive.",
+    description: "Decentralized blob storage for encrypted task artifacts.",
     logo: (
-      <img
-        src="https://cdn.prod.website-files.com/6864f039b26f4afedada6bc5/6864f039b26f4afedada6c30_about-ilust.svg"
-        alt="Walrus logo"
-        className="h-12 w-12 rounded-full border border-black/10 bg-white p-1 shadow-sm"
-      />
+      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#97F0E5]/50 bg-[#97F0E5]/10 p-2 shadow-[0_0_15px_rgba(151,240,229,0.3)]">
+        <img
+          src="/logo/walrus.svg"
+          alt="Walrus logo"
+          className="h-full w-full object-contain"
+        />
+      </div>
     ),
   },
   {
     name: "Seal",
     description:
-      "Privacy-preserving compliance rails for cross-jurisdiction workflows.",
+      "TEE-based encryption ensuring data privacy and access control.",
     logo: (
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#071311] text-base font-semibold text-[#CAEAE5] shadow-inner shadow-black/20">
-        Seal
-      </span>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#eaff7e]/50 bg-[#eaff7e]/10 p-2 shadow-[0_0_15px_rgba(234,255,126,0.3)]">
+        <img
+          src="https://cdn.prod.website-files.com/687615731a76518b8c27cf39/68761ce22a49c0f7365165e8_Group%202147263312%20(1).svg"
+          alt="Seal logo"
+          className="h-full w-full object-contain"
+        />
+      </div>
     ),
   },
   {
     name: "Enoki",
     description: "Account abstraction toolkit powering seamless wallet flows.",
     logo: (
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#071311] text-lg font-semibold text-[#CAEAE5]">
-        E
-      </span>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-purple-500/50 bg-purple-950/50 p-2 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+        <img
+          src="https://framerusercontent.com/images/ArsS2u2lgqTlvUIhoRhdx3N37fs.png?width=1440&height=1016"
+          alt="Enoki logo"
+          className="h-full w-full object-contain"
+        />
+      </div>
     ),
   },
   {
     name: "Passkeys",
     description: "WebAuthn-native authentication for instant, secure sign-ins.",
     logo: (
-      <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#071311]/10 bg-white text-lg font-semibold text-[#071311] shadow-inner shadow-black/10">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full border border-green-500/50 bg-green-950/50 text-xs font-bold text-green-400 shadow-[0_0_10px_rgba(74,222,128,0.3)]">
         PK
       </span>
     ),
   },
   {
     name: "Move",
-    description: "Safe-by-design smart contracts that enforce task logic.",
-    logo: <MoveGlyph />,
+    description: "Safe smart contracts enforcing asset ownership logic.",
+    logo: (
+      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-orange-500/50 bg-orange-950/50 shadow-[0_0_10px_rgba(249,115,22,0.3)]">
+        <MoveGlyph />
+      </div>
+    ),
   },
 ];
 
@@ -179,7 +203,7 @@ export default function Home() {
       <div className="pointer-events-none absolute right-0 bottom-0 h-[500px] w-[500px] bg-purple-600/10 blur-[120px]" />
 
       <div className="relative flex min-h-screen flex-col">
-        <nav className="flex justify-center px-4 pt-6">
+        <nav className="sticky top-0 z-50 flex justify-center px-4 pt-6 pb-4">
           <NavBar />
         </nav>
 
@@ -203,14 +227,12 @@ export default function Home() {
               </span>
             </div>
 
-            <h1 className="glitch-text text-5xl font-bold leading-tight tracking-tight md:text-7xl" data-text="All-in-one on-chain task management">
-              All-in-one on-chain task management
+            <h1 className="glitch-text text-5xl font-bold leading-tight tracking-tight md:text-7xl" data-text="Turn Completed Tasks into Ownable Experience Assets">
+              Turn Completed Tasks into Ownable Experience Assets
             </h1>
             
             <p className="max-w-xl text-lg text-gray-400 md:text-xl border-l-2 border-cyan-500/30 pl-6">
-              Draft tasks, sync contributors, and release rewards in a single
-              workflow. Powered by <span className="text-cyan-400">Walrus</span> decentralized storage, <span className="text-cyan-400">Sui</span> speed, and
-              <span className="text-purple-400"> Move</span> smart contracts.
+              Don't just get work done. <span className="text-cyan-400">Capture</span> execution knowledge, <span className="text-purple-400">encrypt</span> it, and <span className="text-cyan-400">trade</span> it in the decentralized experience economy.
             </p>
             <motion.div
               className="flex flex-col items-center gap-6 sm:flex-row md:items-start"
@@ -243,16 +265,16 @@ export default function Home() {
             >
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-widest text-cyan-500/70 mb-1">
-                  // TOTAL_TASKS
+                  // ASSETS_CREATED
                 </p>
                 <p className="text-3xl font-bold font-mono text-white">10,888</p>
               </div>
               <div className="h-px w-full bg-gradient-to-r from-transparent via-cyan-900 to-transparent md:h-12 md:w-px md:bg-gradient-to-b" />
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-widest text-cyan-500/70 mb-1">
-                  // ACTIVE_TEAMS
+                  // VALUE_TRADED
                 </p>
-                <p className="text-3xl font-bold font-mono text-white">88</p>
+                <p className="text-3xl font-bold font-mono text-white">$1.2M+</p>
               </div>
             </motion.div>
           </motion.div>
@@ -313,6 +335,103 @@ export default function Home() {
                 </li>
               </ul>
             </div>
+          </div>
+        </section>
+
+        {/* The Shift Section */}
+        <section className="mx-auto w-full max-w-6xl px-6 py-24">
+          <div className="grid gap-8 md:grid-cols-2">
+            <motion.div 
+              className="cyber-glass-card p-8 border-red-500/20"
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <h3 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"/>
+                THE OLD WAY
+              </h3>
+              <p className="text-2xl font-mono text-gray-400">
+                "Work done, money paid, <span className="text-white border-b-2 border-red-500/50">knowledge lost</span>."
+              </p>
+              <p className="mt-4 text-sm text-gray-500">
+                Execution data is trapped in private silos. No way to verify, reuse, or monetize experience.
+              </p>
+            </motion.div>
+
+            <motion.div 
+              className="cyber-glass-card p-8 border-cyan-500/20 bg-cyan-950/10"
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <h3 className="text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse"/>
+                THE TASKOS WAY
+              </h3>
+              <p className="text-2xl font-mono text-white">
+                "Work done, asset minted, <span className="text-cyan-400 border-b-2 border-cyan-500/50">knowledge monetized</span>."
+              </p>
+              <p className="mt-4 text-sm text-gray-400">
+                Completed tasks become ownable data assets. Tradeable, verifiable, and reusable forever.
+              </p>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="mx-auto w-full max-w-7xl px-6 pb-24">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-white md:text-4xl">
+              From Task to <span className="text-cyan-400">Asset</span>
+            </h2>
+          </div>
+
+          <div className="relative grid gap-8 md:grid-cols-4">
+            {/* Connecting Line */}
+            <div className="absolute top-12 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent hidden md:block" />
+
+            {[
+              { 
+                title: "Create & Escrow", 
+                desc: "Define task, lock rewards in smart contract.",
+                icon: FileText,
+                color: "text-gray-400"
+              },
+              { 
+                title: "Capture & Mint", 
+                desc: "Execution metadata packaged into NFT asset.",
+                icon: Layers,
+                color: "text-cyan-400"
+              },
+              { 
+                title: "Encrypt & Store", 
+                desc: "Raw data on Walrus, references on-chain.",
+                icon: Lock,
+                color: "text-purple-400"
+              },
+              { 
+                title: "Trade & Access", 
+                desc: "Buy access, decrypt, and reuse knowledge.",
+                icon: RefreshCw,
+                color: "text-green-400"
+              }
+            ].map((step, i) => (
+              <motion.div 
+                key={i}
+                className="relative flex flex-col items-center text-center z-10"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
+              >
+                <div className={`h-24 w-24 rounded-full cyber-glass-card flex items-center justify-center mb-6 border-2 border-white/5 ${i === 1 ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' : ''}`}>
+                  <step.icon className={`h-10 w-10 ${step.color}`} />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
+                <p className="text-sm text-gray-400 max-w-[200px]">{step.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </section>
 
@@ -379,7 +498,7 @@ export default function Home() {
               <span className="h-px w-8 bg-purple-500/50"></span>
             </div>
             <h2 className="text-3xl font-bold text-white md:text-4xl">
-              Built natively on <span className="text-cyan-400">Sui Stack</span>, secured by <span className="text-purple-400">Move</span>
+              Built natively on <span className="text-[#4DA2FF]">SUI stack</span>, storage by <span className="text-[#97F0E5]">Walrus</span>, secured by <span className="text-[#eaff7e]">Seal</span>
             </h2>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-2">
@@ -397,7 +516,7 @@ export default function Home() {
                 }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center border border-white/10 bg-black/50">
+                  <div className="flex h-16 w-16 items-center justify-center">
                     {logo}
                   </div>
                   <div>

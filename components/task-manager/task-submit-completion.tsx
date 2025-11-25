@@ -7,18 +7,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Upload, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { uploadToWalrus } from "@/utils/walrus";
+import { Upload, CheckCircle, AlertCircle, Loader2, File, X } from "lucide-react";
+import { uploadWalrusFileWithFlow, formatFileSize } from "@/utils/walrus";
 
 interface TaskSubmitCompletionProps {
     taskId: string;
 }
 
 export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
-    const [completionNotes, setCompletionNotes] = useState("");
+    const [file, setFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [uploadedBlobId, setUploadedBlobId] = useState<string | null>(null);
 
@@ -98,9 +98,22 @@ export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
     const isAssignee = account?.address && assignee && account.address.toLowerCase() === assignee.toLowerCase();
     const canSubmit = isAssignee && taskStatus === 1; // STATUS_IN_PROGRESS = 1
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setFile(e.target.files[0]);
+        }
+    };
+
+    const handleRemoveFile = () => {
+        setFile(null);
+        // Reset input value
+        const fileInput = document.getElementById('completion-file') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+    };
+
     const handleSubmitCompletion = async () => {
-        if (!completionNotes.trim()) {
-            toast.error("Please add completion notes");
+        if (!file) {
+            toast.error("Please select a file to upload");
             return;
         }
 
@@ -122,21 +135,27 @@ export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
 
         try {
             // Step 1: Upload to Walrus with wallet signing
-            toast.info("Uploading completion notes to Walrus...");
+            toast.info("Uploading file to Walrus...");
             
+            // Convert file to bytes
+            const arrayBuffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+
             // Helper to sign transactions for Walrus upload
             const signTransactionForWalrus = async (tx: unknown) => {
                 const result = await signAndExecuteTransaction({ transaction: tx as Transaction });
                 return { digest: result.digest };
             };
             
-            const blobId = await uploadToWalrus(
-                completionNotes,
+            const result = await uploadWalrusFileWithFlow(
+                bytes,
                 signTransactionForWalrus,
                 account.address
             );
+            
+            const blobId = result.blobId;
             setUploadedBlobId(blobId);
-            toast.success("Content uploaded to Walrus!", {
+            toast.success("File uploaded to Walrus!", {
                 description: `Blob ID: ${blobId.substring(0, 16)}...`,
             });
 
@@ -164,7 +183,7 @@ export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
             });
             
             // Reset form
-            setCompletionNotes("");
+            setFile(null);
             setUploadedBlobId(blobId); // Keep blob ID visible for reference
         } catch (error) {
             console.error("Error submitting completion:", error);
@@ -243,23 +262,51 @@ export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
                         Submit Completed Work
                     </CardTitle>
                     <CardDescription>
-                        Upload your completion notes and submit the task for approval
+                        Upload your work file (zip, pdf, image, etc.) to submit for approval
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="completion-notes">Completion Notes</Label>
-                        <Textarea
-                            id="completion-notes"
-                            value={completionNotes}
-                            onChange={(e) => setCompletionNotes(e.target.value)}
-                            placeholder="Describe what you've completed, any important notes, links to deliverables, etc."
-                            rows={6}
-                            disabled={!canSubmit || isSubmitting || hasSubmittedWork}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Content will be automatically uploaded to Walrus and submitted on-chain
-                        </p>
+                        <Label htmlFor="completion-file">Work File</Label>
+                        {!file ? (
+                            <div className="flex items-center justify-center w-full">
+                                <label htmlFor="completion-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
+                                        <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">Any file type (max 10MB recommended)</p>
+                                    </div>
+                                    <Input 
+                                        id="completion-file" 
+                                        type="file" 
+                                        className="hidden" 
+                                        onChange={handleFileChange}
+                                        disabled={!canSubmit || isSubmitting || hasSubmittedWork}
+                                    />
+                                </label>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between p-4 border rounded-lg bg-slate-50 dark:bg-slate-900">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="p-2 bg-white dark:bg-slate-800 rounded border">
+                                        <File className="h-6 w-6 text-blue-500" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium truncate">{file.name}</p>
+                                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleRemoveFile}
+                                    disabled={isSubmitting}
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     {uploadedBlobId && (
@@ -272,7 +319,7 @@ export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
                     {/* Single Submit Button - Auto Upload & Submit */}
                     <Button 
                         onClick={handleSubmitCompletion}
-                        disabled={!canSubmit || !completionNotes.trim() || isSubmitting || hasSubmittedWork}
+                        disabled={!canSubmit || !file || isSubmitting || hasSubmittedWork}
                         className="w-full"
                         size="lg"
                     >
@@ -306,7 +353,7 @@ export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
                     <ol className="space-y-2 text-sm text-muted-foreground">
                         <li className="flex items-start gap-2">
                             <Badge variant="outline" className="mt-0.5">1</Badge>
-                            <span>Write your completion notes describing the work done</span>
+                            <span>Upload your work file (zip, pdf, etc.)</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <Badge variant="outline" className="mt-0.5">2</Badge>
