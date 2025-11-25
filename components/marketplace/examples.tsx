@@ -113,7 +113,7 @@ export function MyExperiencesPage() {
     <div>
       <h1>My Purchased Experiences</h1>
       {myPurchases.map((exp) => (
-        <ExperienceAccessCard key={exp.id} experience={exp} />
+        <ExperienceAccessCard key={exp.id} experienceId={exp.id} />
       ))}
     </div>
   );

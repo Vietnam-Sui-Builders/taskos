@@ -146,89 +146,89 @@ export const CreateTask = () => {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="lg" className="w-full h-full gap-2">
-                    <IconCirclePlusFilled />
-                    <span>Quick Create</span>
+                <Button size="lg" className="w-full h-full gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/50 transition-all duration-300 group">
+                    <IconCirclePlusFilled className="group-hover:animate-pulse" />
+                    <span className="font-display tracking-wide">QUICK_CREATE</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-card border-border">
+            <DialogContent className="sm:max-w-[500px] glass border-primary/20 bg-background/80 backdrop-blur-xl shadow-2xl shadow-primary/10">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl">
-                        Create New Task
+                    <DialogTitle className="text-2xl font-display tracking-wide text-primary">
+                        CREATE_TASK_PROTOCOL
                     </DialogTitle>
-                    <DialogDescription>
-                        Add a new task to your board. Fill in the details below.
+                    <DialogDescription className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                        Initialize new task sequence. Fill in required parameters.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                     <div className="space-y-2">
-                        <Label htmlFor="title">Task Title</Label>
+                        <Label htmlFor="title" className="font-mono text-xs uppercase tracking-wider text-primary/80">Task Title</Label>
                         <Input
                             id="title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Enter task title..."
+                            placeholder="ENTER_TITLE..."
                             required
-                            className="bg-background"
+                            className="bg-background/50 border-primary/20 focus:border-primary/50 font-mono"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description" className="font-mono text-xs uppercase tracking-wider text-primary/80">Description</Label>
                         <Textarea
                             id="description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Enter task description..."
+                            placeholder="ENTER_DESCRIPTION..."
                             rows={3}
-                            className="bg-background resize-none"
+                            className="bg-background/50 border-primary/20 focus:border-primary/50 resize-none font-mono"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="image-url">Image URL (Optional)</Label>
+                        <Label htmlFor="image-url" className="font-mono text-xs uppercase tracking-wider text-primary/80">Image URL (Optional)</Label>
                         <Input
                             id="image-url"
                             value={imageUrl ? imageUrl : "https://cdn.prod.website-files.com/6864f039b26f4afedada6bc5/6864f039b26f4afedada6bf4_footer-img.svg"}
                             onChange={(e) => setImageUrl(e.target.value)}
-                            placeholder="https://cdn.prod.website-files.com/6864f039b26f4afedada6bc5/6864f039b26f4afedada6bf4_footer-img.svg"
-                            className="bg-background"
+                            placeholder="https://..."
+                            className="bg-background/50 border-primary/20 focus:border-primary/50 font-mono text-xs"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
+                        <Label htmlFor="category" className="font-mono text-xs uppercase tracking-wider text-primary/80">Category</Label>
                         <Input
                             id="category"
                             value={category}
                             onChange={(e) => setCategory(e.target.value)}
-                            placeholder="e.g., Development, Design, Marketing"
-                            className="bg-background"
+                            placeholder="e.g., DEV, DESIGN, OPS"
+                            className="bg-background/50 border-primary/20 focus:border-primary/50 font-mono"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="visibility">Visibility</Label>
+                        <Label htmlFor="visibility" className="font-mono text-xs uppercase tracking-wider text-primary/80">Visibility</Label>
                         <Select
                             value={visibility}
                             onValueChange={(value: string) => setVisibility(value)}
                         >
                             <SelectTrigger
                                 id="visibility"
-                                className="bg-background"
+                                className="bg-background/50 border-primary/20 focus:border-primary/50 font-mono"
                             >
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="0">Private</SelectItem>
-                                <SelectItem value="1">Team</SelectItem>
-                                <SelectItem value="2">Public</SelectItem>
+                            <SelectContent className="bg-background/90 border-primary/20 backdrop-blur-xl">
+                                <SelectItem value="0">PRIVATE</SelectItem>
+                                <SelectItem value="1">TEAM</SelectItem>
+                                <SelectItem value="2">PUBLIC</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="tags">Tags</Label>
+                        <Label htmlFor="tags" className="font-mono text-xs uppercase tracking-wider text-primary/80">Tags</Label>
                         <div className="flex gap-2">
                             <Input
                                 id="tags"
@@ -243,8 +243,8 @@ export const CreateTask = () => {
                                         }
                                     }
                                 }}
-                                placeholder="Add tags (press Enter)"
-                                className="bg-background"
+                                placeholder="ADD_TAG (PRESS ENTER)"
+                                className="bg-background/50 border-primary/20 focus:border-primary/50 font-mono"
                             />
                         </div>
                         {tags.length > 0 && (
@@ -252,13 +252,13 @@ export const CreateTask = () => {
                                 {tags.map((tag, index) => (
                                     <span
                                         key={index}
-                                        className="px-2 py-1 text-xs bg-primary/10 rounded-md flex items-center gap-1"
+                                        className="px-2 py-1 text-xs bg-primary/10 border border-primary/20 text-primary rounded-md flex items-center gap-1 font-mono"
                                     >
                                         {tag}
                                         <button
                                             type="button"
                                             onClick={() => setTags(tags.filter((_, i) => i !== index))}
-                                            className="hover:text-destructive"
+                                            className="hover:text-destructive transition-colors"
                                         >
                                             ×
                                         </button>
@@ -268,10 +268,10 @@ export const CreateTask = () => {
                         )}
                     </div>
 
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                            <Label htmlFor="due-date">
-                                Due Date (Optional)
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-2 flex-1">
+                            <Label htmlFor="due-date" className="font-mono text-xs uppercase tracking-wider text-primary/80">
+                                Due Date
                             </Label>
                             <Input
                                 id="due-date"
@@ -279,11 +279,12 @@ export const CreateTask = () => {
                                 value={dueDate}
                                 onChange={(e) => setDueDate(e.target.value)}
                                 disabled={isCreating}
+                                className="bg-background/50 border-primary/20 focus:border-primary/50 font-mono text-xs"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="priority">Priority</Label>
+                        <div className="space-y-2 flex-1">
+                            <Label htmlFor="priority" className="font-mono text-xs uppercase tracking-wider text-primary/80">Priority</Label>
                             <Select
                                 value={priority.toString()}
                                 onValueChange={(value: string) =>
@@ -292,15 +293,15 @@ export const CreateTask = () => {
                             >
                                 <SelectTrigger
                                     id="priority"
-                                    className="bg-background min-w-40"
+                                    className="bg-background/50 border-primary/20 focus:border-primary/50 font-mono"
                                 >
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="1">Low</SelectItem>
-                                    <SelectItem value="2">Medium</SelectItem>
-                                    <SelectItem value="3">High</SelectItem>
-                                    <SelectItem value="4">Critical</SelectItem>
+                                <SelectContent className="bg-background/90 border-primary/20 backdrop-blur-xl">
+                                    <SelectItem value="1">LOW</SelectItem>
+                                    <SelectItem value="2">MEDIUM</SelectItem>
+                                    <SelectItem value="3">HIGH</SelectItem>
+                                    <SelectItem value="4">CRITICAL</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -311,9 +312,9 @@ export const CreateTask = () => {
                             type="button"
                             variant="outline"
                             onClick={() => setOpen(false)}
-                            className="flex-1"
+                            className="flex-1 border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/50 font-mono uppercase tracking-wider"
                         >
-                            Cancel
+                            Abort
                         </Button>
                         <Button
                             type="submit"
@@ -324,9 +325,9 @@ export const CreateTask = () => {
                                 isCreating
                             }
                             variant="default"
-                            className="flex-1"
+                            className="flex-1 bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 hover:border-primary font-mono uppercase tracking-wider"
                         >
-                            {isCreating ? "Creating..." : "Create Task"}
+                            {isCreating ? "EXECUTING..." : "INITIATE_TASK"}
                         </Button>
                     </div>
                 </form>

@@ -4,7 +4,6 @@
 import React from 'react';
 import { useExperienceAccess } from '../hooks/useExperienceAccess';
 import { useWallets } from '@mysten/dapp-kit';
-import { useWallets } from '@mysten/dapp-kit';
 
 interface ExperienceDetailProps {
   experienceId: string;

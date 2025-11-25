@@ -125,8 +125,8 @@ export function TaskSubmitCompletion({ taskId }: TaskSubmitCompletionProps) {
             toast.info("Uploading completion notes to Walrus...");
             
             // Helper to sign transactions for Walrus upload
-            const signTransactionForWalrus = async (tx: Transaction) => {
-                const result = await signAndExecuteTransaction({ transaction: tx });
+            const signTransactionForWalrus = async (tx: unknown) => {
+                const result = await signAndExecuteTransaction({ transaction: tx as Transaction });
                 return { digest: result.digest };
             };
             

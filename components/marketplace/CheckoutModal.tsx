@@ -59,92 +59,100 @@ export function CheckoutModal({
   const priceInSUI = (experience.price / 1e9).toFixed(3);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
       <div
-        className="modal-content checkout-modal"
+        className="relative w-full max-w-lg glass border-primary/20 bg-background/90 backdrop-blur-xl p-6 rounded-xl shadow-[0_0_50px_rgba(var(--primary),0.1)] animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        <button className="modal-close" onClick={onClose}>
+        <button className="absolute top-4 right-4 text-muted-foreground hover:text-primary transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/10" onClick={onClose}>
           ✕
         </button>
 
-        <h1>🛒 Checkout</h1>
+        <h1 className="text-2xl font-bold font-display tracking-wide text-primary glow-text mb-6 flex items-center gap-2">
+            <span className="text-xl">🛒</span> CHECKOUT_PROTOCOL
+        </h1>
 
         {/* Order Summary */}
-        <div className="order-summary">
-          <h2>Order Summary</h2>
+        <div className="bg-card/50 border border-primary/10 rounded-lg p-4 mb-6 space-y-3">
+          <h2 className="text-sm font-bold font-display tracking-wider text-muted-foreground uppercase border-b border-primary/10 pb-2">Order Summary</h2>
 
-          <div className="order-item">
-            <span>{experience.skill}</span>
-            <span className="price">{priceInSUI} SUI</span>
+          <div className="flex justify-between items-center text-sm font-mono">
+            <span className="text-foreground font-bold">{experience.skill}</span>
+            <span className="text-primary">{priceInSUI} SUI</span>
           </div>
 
-          <div className="order-row">
-            <span>Domain:</span>
-            <span>{experience.domain}</span>
+          <div className="flex justify-between items-center text-xs font-mono text-muted-foreground">
+            <span>DOMAIN</span>
+            <span className="text-foreground">{experience.domain}</span>
           </div>
 
-          <div className="order-row">
-            <span>Quality Score:</span>
-            <span>{experience.quality_score}/100</span>
+          <div className="flex justify-between items-center text-xs font-mono text-muted-foreground">
+            <span>QUALITY_SCORE</span>
+            <span className="text-foreground">{experience.quality_score}/100</span>
           </div>
 
-          <hr />
-
-          <div className="order-total">
-            <strong>Total:</strong>
-            <strong className="total-price">{priceInSUI} SUI</strong>
+          <div className="flex justify-between items-center pt-3 border-t border-primary/10 mt-2">
+            <strong className="text-sm font-display tracking-wide text-foreground">TOTAL</strong>
+            <strong className="text-lg font-display text-primary glow-text-sm">{priceInSUI} SUI</strong>
           </div>
         </div>
 
         {/* Wallet Info */}
-        <div className="wallet-section">
-          <h2>👛 Wallet Information</h2>
-          <div className="wallet-display">
-            <p>
-              <strong>Connected Wallet:</strong>
-            </p>
-            <code>{currentAccount?.address}</code>
+        <div className="mb-6 space-y-2">
+          <h2 className="text-sm font-bold font-display tracking-wider text-muted-foreground uppercase flex items-center gap-2">
+            <span className="text-xs">👛</span> WALLET_INFO
+          </h2>
+          <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 font-mono text-xs">
+            <p className="text-muted-foreground mb-1">CONNECTED_WALLET</p>
+            <code className="block bg-background/50 p-2 rounded border border-primary/10 text-primary break-all">
+                {currentAccount?.address || 'NOT_CONNECTED'}
+            </code>
           </div>
         </div>
 
         {/* Payment Method */}
-        <div className="payment-section">
-          <h2>💳 Payment Method</h2>
-          <div className="payment-info">
-            <p>
-              This purchase will be processed on the Sui blockchain using your
-              connected wallet.
+        <div className="mb-6 space-y-2">
+          <h2 className="text-sm font-bold font-display tracking-wider text-muted-foreground uppercase flex items-center gap-2">
+            <span className="text-xs">💳</span> PAYMENT_DETAILS
+          </h2>
+          <div className="bg-card/50 border border-primary/10 rounded-lg p-3 text-xs font-mono space-y-2">
+            <p className="text-muted-foreground">
+              Transaction processed via Sui Testnet.
             </p>
-            <div className="payment-details">
-              <p>
-                <strong>Network:</strong> Sui Testnet
-              </p>
-              <p>
-                <strong>Gas Fee:</strong> ~0.01 SUI (estimated)
-              </p>
-              <p>
-                <strong>Total Cost:</strong> ~{(parseFloat(priceInSUI) + 0.01).toFixed(3)} SUI
-              </p>
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-primary/5">
+              <span className="text-muted-foreground">NETWORK</span>
+              <span className="text-right text-foreground">SUI_TESTNET</span>
+              
+              <span className="text-muted-foreground">GAS_FEE (EST)</span>
+              <span className="text-right text-foreground">~0.01 SUI</span>
+              
+              <span className="text-muted-foreground font-bold">TOTAL_COST</span>
+              <span className="text-right text-primary font-bold">~{(parseFloat(priceInSUI) + 0.01).toFixed(3)} SUI</span>
             </div>
           </div>
         </div>
 
         {/* Terms */}
-        <div className="terms-section">
-          <label className="terms-checkbox">
-            <input
-              type="checkbox"
-              checked={agreedToTerms}
-              onChange={(e) => setAgreedToTerms(e.target.checked)}
-            />
-            <span>
+        <div className="mb-6">
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <div className="relative flex items-center mt-0.5">
+                <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="peer h-4 w-4 appearance-none border border-primary/30 bg-background/50 rounded-sm checked:bg-primary checked:border-primary transition-all cursor-pointer"
+                />
+                <svg className="absolute w-3 h-3 text-background pointer-events-none opacity-0 peer-checked:opacity-100 left-0.5 top-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
               I agree to the{' '}
-              <a href="#terms" target="_blank" rel="noopener noreferrer">
+              <a href="#terms" className="text-primary hover:underline underline-offset-4">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="#privacy" target="_blank" rel="noopener noreferrer">
+              <a href="#privacy" className="text-primary hover:underline underline-offset-4">
                 Privacy Policy
               </a>
             </span>
@@ -153,37 +161,39 @@ export function CheckoutModal({
 
         {/* Error Display */}
         {error && (
-          <ErrorDisplay
-            error={error}
-            onDismiss={() => setError(null)}
-            onRetry={handlePurchase}
-          />
+          <div className="mb-6">
+            <ErrorDisplay
+                error={error}
+                onDismiss={() => setError(null)}
+                onRetry={handlePurchase}
+            />
+          </div>
         )}
 
         {/* Processing State */}
         {(isProcessing || marketplaceProcessing) && (
-          <div className="processing-message">
-            <div className="spinner" />
-            <p>Processing your purchase...</p>
-            <small>Please approve the transaction in your wallet</small>
+          <div className="mb-6 bg-primary/10 border border-primary/20 rounded-lg p-4 text-center animate-pulse">
+            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-primary font-bold font-display tracking-wide">PROCESSING_TRANSACTION...</p>
+            <small className="text-xs font-mono text-muted-foreground">APPROVE_IN_WALLET</small>
           </div>
         )}
 
         {/* Actions */}
-        <div className="checkout-actions">
+        <div className="flex gap-4 pt-4 border-t border-primary/10">
           <button
-            className="btn btn-secondary"
+            className="flex-1 px-4 py-2 rounded-md border border-primary/20 text-primary hover:bg-primary/10 transition-colors font-mono text-xs uppercase tracking-wider"
             onClick={onBack}
             disabled={isProcessing}
           >
-            ← Back
+            ← ABORT
           </button>
           <button
-            className="btn btn-primary btn-lg"
+            className="flex-[2] px-4 py-2 rounded-md bg-primary text-primary-foreground font-bold font-display tracking-wider hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handlePurchase}
             disabled={isProcessing || marketplaceProcessing || !agreedToTerms}
           >
-            {(isProcessing || marketplaceProcessing) ? '⏳ Processing...' : '💳 Complete Purchase'}
+            {(isProcessing || marketplaceProcessing) ? '⏳ EXECUTING...' : '💳 CONFIRM_PURCHASE'}
           </button>
         </div>
       </div>

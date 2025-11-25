@@ -41,41 +41,41 @@ function WalletConnectedSection({
     "0xbb8d2de83cf7f1d3aac09f7b514c95749ad73506306e352ddf3f2bcd8b80baa2";
 
   return (
-    <Card className="border-green-200 bg-green-50">
+    <Card className="border-primary/20 bg-primary/5 backdrop-blur-sm w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-green-800 flex items-center gap-2">
-          <span className="text-green-600">✅</span>
-          Wallet Connected
+        <CardTitle className="text-primary flex items-center gap-2 font-display tracking-wide">
+          <span className="text-primary animate-pulse">●</span>
+          WALLET CONNECTED
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-sm">
-          <p className="font-medium text-gray-700">
-            Wallet: {currentAccount.label || "Connected Wallet"}
+        <div className="text-sm space-y-1">
+          <p className="font-medium text-foreground">
+            ID: {currentAccount.label || "Unknown Unit"}
           </p>
-          <p className="text-gray-600 break-all mt-1">
-            Address: {currentAccount.address}
+          <p className="text-muted-foreground break-all font-mono text-xs opacity-70">
+            {currentAccount.address}
           </p>
         </div>
 
-        <Card className="border-emerald-200 bg-emerald-50">
-          <CardHeader>
-            <CardTitle className="text-emerald-800 flex items-center">
-              Send 1 SUI Transaction
+        <Card className="border-secondary/20 bg-secondary/5">
+          <CardHeader className="py-3">
+            <CardTitle className="text-secondary flex items-center text-xs font-mono">
+              {">"} EXECUTE_PROTOCOL_ALPHA
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-emerald-700 text-sm">
-              Test transaction to transfer 1 SUI to:
+          <CardContent className="space-y-4 pb-4">
+            <p className="text-muted-foreground text-xs">
+              Initiate transfer sequence (1 SUI):
             </p>
-            <code className="block bg-gray-100 p-2 rounded text-xs break-all">
+            <code className="block bg-black/40 p-2 rounded text-xs break-all text-primary font-mono border border-primary/10">
               {recipientAddress}
             </code>
             <Button
               onClick={onSignTransaction}
-              className="w-full bg-green-600 hover:bg-green-700"
+              className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:border-primary transition-all duration-300 font-mono text-xs tracking-wider"
             >
-              Sign and Execute Transaction
+              [ INITIATE TRANSACTION ]
             </Button>
           </CardContent>
         </Card>
@@ -232,31 +232,56 @@ function EnhancedLoginForm() {
   return (
     <div
       className={cn(
-        "flex flex-col gap-6 min-h-screen items-center justify-center p-4"
+        "flex flex-col gap-6 min-h-screen items-center justify-center p-4 relative overflow-hidden"
       )}
     >
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Task manage</CardTitle>
-          <CardDescription>Connect your wallet to get started</CardDescription>
+      {/* Background decoration */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(var(--primary),0.05),transparent_70%)]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 blur-[100px] rounded-full opacity-50" />
+      </div>
+
+      <Card className="w-full max-w-md glass border-primary/20 shadow-2xl shadow-primary/5 relative z-10">
+        <CardHeader className="text-center space-y-2 pb-8">
+          <div className="mx-auto w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center border border-primary/20 mb-4 shadow-[0_0_15px_rgba(var(--primary),0.2)]">
+            <div className="w-8 h-8 bg-primary rounded-full animate-pulse shadow-[0_0_20px_rgba(var(--primary),0.5)]" />
+          </div>
+          <CardTitle className="text-3xl font-bold font-display tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-accent">
+            TASK_OS
+          </CardTitle>
+          <CardDescription className="text-muted-foreground font-mono text-[10px] tracking-[0.3em] uppercase opacity-70">
+            Secure Access Terminal v2.0
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <ConnectButton
-              className="w-full"
-              style={{
-                backgroundColor: "transparent",
-                color: "hsl(var(--primary-foreground))",
-              }}
-            />
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative">
+                <ConnectButton
+                  className="w-full !bg-background/80 !backdrop-blur-xl !border !border-primary/20 !text-primary hover:!bg-primary/10 hover:!border-primary/50 transition-all duration-300 !font-mono !h-12 !rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border/50" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+                <span className="bg-background px-2 text-muted-foreground/50">
+                  Alternative Protocol
+                </span>
+              </div>
+            </div>
 
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full h-12 border-secondary/20 text-secondary hover:bg-secondary/10 hover:text-secondary hover:border-secondary/50 font-mono text-xs tracking-wider uppercase transition-all duration-300"
               onClick={connectWithPasskey}
               disabled={isPasskeyConnecting}
             >
-              {isPasskeyConnecting ? "Connecting..." : "Connect with Passkey"}
+              {isPasskeyConnecting ? "INITIALIZING UPLINK..." : "ACCESS VIA PASSKEY"}
             </Button>
           </div>
         </CardContent>
@@ -270,20 +295,20 @@ function EnhancedLoginForm() {
       )}
 
       {passkeyAccount && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-accent/20 bg-accent/5 w-full max-w-md backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-blue-800 flex items-center gap-2">
-              <span className="text-blue-600">🔐</span>
-              Passkey Wallet Connected
+            <CardTitle className="text-accent flex items-center gap-2 font-display text-sm tracking-wide">
+              <span className="text-accent animate-pulse">◈</span>
+              PASSKEY LINK ESTABLISHED
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm">
-              <p className="font-medium text-gray-700">
-                Wallet: {passkeyAccount.label}
+            <div className="text-sm space-y-1">
+              <p className="font-medium text-foreground">
+                ID: {passkeyAccount.label}
               </p>
-              <p className="text-gray-600 break-all mt-1">
-                Address: {passkeyAccount.address}
+              <p className="text-muted-foreground break-all font-mono text-xs opacity-70">
+                {passkeyAccount.address}
               </p>
             </div>
             <div className="flex gap-2">
@@ -293,9 +318,9 @@ function EnhancedLoginForm() {
                 onClick={() =>
                   navigator.clipboard.writeText(passkeyAccount.address)
                 }
-                className="flex-1"
+                className="flex-1 border-accent/20 hover:bg-accent/10 hover:text-accent hover:border-accent/50 text-xs font-mono"
               >
-                📋 Copy
+                COPY_ID
               </Button>
               <Button
                 variant="outline"
@@ -304,9 +329,9 @@ function EnhancedLoginForm() {
                   clearWalletStorage();
                   setPasskeyAccount(null);
                 }}
-                className="flex-1 text-red-600 hover:text-red-700"
+                className="flex-1 border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 text-xs font-mono"
               >
-                Disconnect
+                TERMINATE
               </Button>
             </div>
           </CardContent>

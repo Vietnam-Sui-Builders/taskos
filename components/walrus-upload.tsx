@@ -198,43 +198,45 @@ export function WalrusUpload() {
   return (
     <div className="space-y-6">
       {/* Upload Section */}
-      <div className="rounded-lg border bg-card p-6">
-        <h2 className="text-2xl font-semibold mb-4">Upload to Walrus</h2>
+      <div className="rounded-xl border border-primary/20 bg-card/40 backdrop-blur-md p-6 shadow-[0_0_30px_rgba(var(--primary),0.05)]">
+        <h2 className="text-xl font-bold font-display tracking-wide text-primary mb-6 flex items-center gap-2">
+            <span className="text-lg">📤</span> UPLOAD_INTERFACE
+        </h2>
 
         {!currentAccount && (
-          <div className="mb-4 flex items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
             <IconWallet className="size-5 text-yellow-600 dark:text-yellow-400" />
-            <p className="text-sm text-yellow-900 dark:text-yellow-100">
-              Connect your Sui wallet to upload files to Walrus.
+            <p className="text-sm font-mono text-yellow-900 dark:text-yellow-100">
+              CONNECT_WALLET_REQUIRED_FOR_UPLOAD
             </p>
           </div>
         )}
 
         {!uploadResult ? (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="file">
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-background/50 border border-primary/20 backdrop-blur-md p-1 rounded-lg h-12">
+              <TabsTrigger value="file" className="gap-2 cursor-pointer data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-mono uppercase tracking-wider transition-all duration-300 h-full rounded-md border border-transparent data-[state=active]:border-primary/50 text-xs md:text-sm">
                 <IconFile className="size-4 mr-2" />
-                File Upload
+                FILE_UPLOAD
               </TabsTrigger>
-              <TabsTrigger value="text">
+              <TabsTrigger value="text" className="gap-2 cursor-pointer data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-mono uppercase tracking-wider transition-all duration-300 h-full rounded-md border border-transparent data-[state=active]:border-primary/50 text-xs md:text-sm">
                 <IconFileText className="size-4 mr-2" />
-                Text Content
+                TEXT_CONTENT
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="file" className="space-y-4">
+            <TabsContent value="file" className="space-y-4 animate-fade-in">
               {/* Drag & Drop Zone */}
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={`
-                  relative border-2 border-dashed rounded-lg p-12 text-center transition-all cursor-pointer
+                  relative border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer group
                   ${
                     isDragging
-                      ? "border-primary bg-primary/5 scale-[1.02]"
-                      : "border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50"
+                      ? "border-primary bg-primary/10 scale-[1.02] shadow-[0_0_20px_rgba(var(--primary),0.2)]"
+                      : "border-primary/20 hover:border-primary/50 hover:bg-primary/5"
                   }
                 `}
                 onClick={() => fileInputRef.current?.click()}
@@ -248,23 +250,23 @@ export function WalrusUpload() {
 
                 <div className="flex flex-col items-center gap-4">
                   <div
-                    className={`rounded-full p-4 ${
-                      isDragging ? "bg-primary/10" : "bg-muted"
+                    className={`rounded-full p-4 transition-colors duration-300 ${
+                      isDragging ? "bg-primary/20" : "bg-primary/5 group-hover:bg-primary/10"
                     }`}
                   >
                     <IconUpload
-                      className={`size-8 ${
-                        isDragging ? "text-primary" : "text-muted-foreground"
+                      className={`size-8 transition-colors duration-300 ${
+                        isDragging ? "text-primary" : "text-primary/50 group-hover:text-primary"
                       }`}
                     />
                   </div>
 
                   <div>
-                    <p className="text-lg font-medium">
-                      {isDragging ? "Drop file here" : "Drag & drop file here"}
+                    <p className="text-lg font-bold font-display tracking-wide text-foreground group-hover:text-primary transition-colors">
+                      {isDragging ? "RELEASE_TO_UPLOAD" : "DRAG_AND_DROP_FILE"}
                     </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      or click to browse
+                    <p className="text-xs font-mono text-muted-foreground mt-2 uppercase tracking-wider">
+                      OR_CLICK_TO_BROWSE
                     </p>
                   </div>
                 </div>
@@ -272,16 +274,16 @@ export function WalrusUpload() {
 
               {/* Selected File Info */}
               {file && (
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5 border border-primary/10">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded bg-background">
-                      <IconFile className="size-5 text-muted-foreground" />
+                    <div className="p-2 rounded bg-background/50 border border-primary/10">
+                      <IconFile className="size-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{file.name}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-bold font-mono text-sm text-foreground">{file.name}</p>
+                      <p className="text-xs font-mono text-muted-foreground">
                         {formatFileSize(file.size)} •{" "}
-                        {file.type || "Unknown type"}
+                        {file.type || "UNKNOWN_TYPE"}
                       </p>
                     </div>
                   </div>
@@ -292,6 +294,7 @@ export function WalrusUpload() {
                       e.stopPropagation();
                       handleReset();
                     }}
+                    className="hover:bg-destructive/10 hover:text-destructive transition-colors"
                   >
                     <IconX className="size-4" />
                   </Button>
@@ -302,49 +305,50 @@ export function WalrusUpload() {
               <Button
                 onClick={handleUpload}
                 disabled={!file || isUploading || !currentAccount}
-                className="w-full"
+                className="w-full bg-primary text-primary-foreground font-bold font-display tracking-wider hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.4)] h-12"
                 size="lg"
               >
                 {isUploading ? (
                   <>
                     <span className="animate-spin mr-2">⏳</span>
-                    Uploading to Walrus...
+                    UPLOADING_TO_WALRUS...
                   </>
                 ) : (
                   <>
                     <IconUpload className="size-4 mr-2" />
-                    Upload to Walrus
+                    INITIATE_UPLOAD
                   </>
                 )}
               </Button>
             </TabsContent>
 
-            <TabsContent value="text" className="space-y-4">
+            <TabsContent value="text" className="space-y-4 animate-fade-in">
               {/* Text Content Input */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="text-content">Content</Label>
+                  <Label htmlFor="text-content" className="text-xs font-mono uppercase tracking-wider text-muted-foreground">CONTENT_DATA</Label>
                   <Textarea
                     id="text-content"
-                    placeholder="Enter your text content here..."
+                    placeholder="ENTER_TEXT_CONTENT..."
                     value={textContent}
                     onChange={(e) => setTextContent(e.target.value)}
-                    className="min-h-[200px] font-mono"
+                    className="min-h-[200px] font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {textContent.length} characters •{" "}
-                    {new Blob([textContent]).size} bytes
+                  <p className="text-xs font-mono text-muted-foreground text-right">
+                    {textContent.length} CHARS •{" "}
+                    {new Blob([textContent]).size} BYTES
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="file-name">File Name (optional)</Label>
+                  <Label htmlFor="file-name" className="text-xs font-mono uppercase tracking-wider text-muted-foreground">FILENAME_OPTIONAL</Label>
                   <Input
                     id="file-name"
                     type="text"
                     placeholder="content.txt"
                     value={textFileName}
                     onChange={(e) => setTextFileName(e.target.value)}
+                    className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
                   />
                 </div>
               </div>
@@ -353,18 +357,18 @@ export function WalrusUpload() {
               <Button
                 onClick={handleUpload}
                 disabled={!textContent.trim() || isUploading || !currentAccount}
-                className="w-full"
+                className="w-full bg-primary text-primary-foreground font-bold font-display tracking-wider hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.4)] h-12"
                 size="lg"
               >
                 {isUploading ? (
                   <>
                     <span className="animate-spin mr-2">⏳</span>
-                    Uploading to Walrus...
+                    UPLOADING_TO_WALRUS...
                   </>
                 ) : (
                   <>
                     <IconUpload className="size-4 mr-2" />
-                    Upload Text to Walrus
+                    INITIATE_TEXT_UPLOAD
                   </>
                 )}
               </Button>
@@ -372,32 +376,33 @@ export function WalrusUpload() {
           </Tabs>
         ) : (
           // Upload Success
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="p-2 rounded-full bg-green-500/20">
-                <IconCheck className="size-5 text-green-600 dark:text-green-400" />
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center gap-4 p-6 rounded-xl bg-green-500/10 border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+              <div className="p-3 rounded-full bg-green-500/20 border border-green-500/30">
+                <IconCheck className="size-6 text-green-500" />
               </div>
               <div>
-                <p className="font-semibold text-green-900 dark:text-green-100">
-                  Upload Successful!
+                <p className="font-bold font-display tracking-wide text-green-500 text-lg">
+                  UPLOAD_SUCCESSFUL
                 </p>
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  Your file has been stored on Walrus testnet
+                <p className="text-xs font-mono text-green-500/80 uppercase tracking-wider">
+                  FILE_STORED_ON_WALRUS_TESTNET
                 </p>
               </div>
             </div>
 
             {/* Blob ID */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Blob ID</label>
+              <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">BLOB_ID</label>
               <div className="flex items-center gap-2">
-                <div className="flex-1 p-3 rounded-lg bg-muted font-mono text-sm break-all">
+                <div className="flex-1 p-3 rounded-lg bg-black/50 border border-primary/20 font-mono text-xs text-primary break-all shadow-inner">
                   {uploadResult.blobId}
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => handleCopyBlobId(uploadResult.blobId)}
+                  className="border-primary/20 hover:bg-primary/10 hover:text-primary transition-colors"
                 >
                   <IconCopy className="size-4" />
                 </Button>
@@ -406,15 +411,16 @@ export function WalrusUpload() {
 
             {/* Retrieval URL */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Retrieval URL</label>
+              <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">RETRIEVAL_URL</label>
               <div className="flex items-center gap-2">
-                <div className="flex-1 p-3 rounded-lg bg-muted font-mono text-sm break-all">
+                <div className="flex-1 p-3 rounded-lg bg-black/50 border border-primary/20 font-mono text-xs text-muted-foreground break-all shadow-inner">
                   {getBlobUrl(uploadResult.blobId)}
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => handleCopyUrl(uploadResult.blobId)}
+                  className="border-primary/20 hover:bg-primary/10 hover:text-primary transition-colors"
                 >
                   <IconCopy className="size-4" />
                 </Button>
@@ -422,31 +428,32 @@ export function WalrusUpload() {
             </div>
 
             {/* Upload Info */}
-            <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-muted">
-              <div>
-                <p className="text-xs text-muted-foreground">Size</p>
-                <p className="font-medium">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-1">SIZE</p>
+                <p className="font-bold font-mono text-foreground">
                   {formatFileSize(uploadResult.size)}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Storage</p>
-                <p className="font-medium">5 Epochs (~6 months)</p>
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-1">STORAGE_DURATION</p>
+                <p className="font-bold font-mono text-foreground">5 EPOCHS (~6 MONTHS)</p>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
-              <Button onClick={handleReset} className="flex-1">
-                Upload Another File
+            <div className="flex gap-3 pt-2">
+              <Button onClick={handleReset} className="flex-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/50 transition-all font-mono uppercase tracking-wider">
+                UPLOAD_ANOTHER
               </Button>
               <Button
                 variant="outline"
                 onClick={() =>
                   window.open(getBlobUrl(uploadResult.blobId), "_blank")
                 }
+                className="flex-1 border-primary/20 hover:bg-primary/10 hover:text-primary transition-colors font-mono uppercase tracking-wider"
               >
-                View File
+                VIEW_FILE
               </Button>
             </div>
           </div>
@@ -455,17 +462,19 @@ export function WalrusUpload() {
 
       {/* Upload History */}
       {uploadHistory.length > 0 && (
-        <div className="rounded-lg border bg-card p-6">
-          <h3 className="text-xl font-semibold mb-4">Recent Uploads</h3>
+        <div className="rounded-xl border border-primary/20 bg-card/40 backdrop-blur-md p-6 shadow-[0_0_30px_rgba(var(--primary),0.05)]">
+          <h3 className="text-lg font-bold font-display tracking-wide text-primary mb-4 flex items-center gap-2">
+            <span className="text-base">📜</span> RECENT_UPLOADS
+          </h3>
           <div className="space-y-2">
             {uploadHistory.map((item, index) => (
               <div
                 key={`${item.blobId}-${index}`}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/70 transition-colors"
+                className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-primary/10 hover:border-primary/30 hover:bg-primary/5 transition-all group"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{item.fileName}</p>
-                  <p className="text-xs text-muted-foreground font-mono truncate">
+                  <p className="font-bold font-mono text-sm text-foreground truncate group-hover:text-primary transition-colors">{item.fileName}</p>
+                  <p className="text-xs text-muted-foreground font-mono truncate opacity-70">
                     {item.blobId}
                   </p>
                 </div>
@@ -474,9 +483,10 @@ export function WalrusUpload() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCopyBlobId(item.blobId)}
+                    className="h-8 px-2 text-xs font-mono uppercase hover:bg-primary/10 hover:text-primary"
                   >
                     <IconCopy className="size-3 mr-1" />
-                    Copy
+                    COPY
                   </Button>
                   <Button
                     variant="ghost"
@@ -484,8 +494,9 @@ export function WalrusUpload() {
                     onClick={() =>
                       window.open(getBlobUrl(item.blobId), "_blank")
                     }
+                    className="h-8 px-2 text-xs font-mono uppercase hover:bg-primary/10 hover:text-primary"
                   >
-                    View
+                    VIEW
                   </Button>
                 </div>
               </div>

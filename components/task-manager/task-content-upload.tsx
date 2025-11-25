@@ -520,7 +520,7 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                     const result = await uploadWalrusFileWithFlow(
                         encryptedBytes,
                         signTransactionWithWallet,
-                        account.address,
+                        account?.address ?? "",
                         {
                             epochs: 5,
                             deletable: true,
@@ -559,7 +559,7 @@ export const TaskContentUpload = ({ taskId }: TaskContentUploadProps) => {
                         const result = await uploadWalrusFileWithFlow(
                             encryptedBytes,
                             signTransactionWithWallet,
-                            account.address,
+                            account?.address ?? "",
                             {
                                 epochs: 5,
                                 deletable: true,

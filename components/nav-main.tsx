@@ -33,10 +33,10 @@ export function NavMain({
                             <SidebarMenuButton
                                 tooltip={item.title}
                                 onClick={() => router.push(item.url)}
-                                className="cursor-pointer"
+                                className="cursor-pointer group hover:bg-primary/10 hover:text-primary data-[active=true]:bg-primary/20 data-[active=true]:text-primary transition-all duration-200 border border-transparent hover:border-primary/20"
                             >
-                                {item.icon && <item.icon />}
-                                <span>{item.title}</span>
+                                {item.icon && <item.icon className="text-muted-foreground group-hover:text-primary transition-colors" />}
+                                <span className="font-mono text-sm tracking-wide group-hover:tracking-wider transition-all">{item.title}</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     ))}

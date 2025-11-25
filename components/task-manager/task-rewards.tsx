@@ -157,6 +157,8 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
 
         const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
         const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
+        const taskRegistryId = process.env.NEXT_PUBLIC_TASKS_REGISTRY_ID;
+        const hasRegistry = !!taskRegistryId;
 
         if (!packageId || !versionObjectId) {
             const missing = [];

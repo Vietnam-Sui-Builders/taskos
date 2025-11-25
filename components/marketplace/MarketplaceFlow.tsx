@@ -10,7 +10,6 @@ import { AccessDataModal } from './AccessDataModal';
 import { SearchAndFilter } from './SearchAndFilter';
 import { Experience, AppError } from './types';
 import { useMarketplaceListings } from '@/hooks/use-marketplace-listings';
-import './MarketplaceFlow.css';
 
 export type PurchaseFlowStep =
   | 'browse'
@@ -84,34 +83,34 @@ export function MarketplaceFlow() {
   };
 
   return (
-    <div className="marketplace-flow">
+    <div className="min-h-screen bg-background p-4 md:p-8">
       {/* Browse Step */}
       {state.currentStep === 'browse' && (
-        <div className="marketplace-browse">
-          <h1>🛍️ Experience Marketplace</h1>
+        <div className="space-y-8 animate-fade-in">
+          <h1 className="text-3xl md:text-4xl font-bold font-display tracking-wider text-primary glow-text">MARKETPLACE_NEXUS</h1>
           <SearchAndFilter />
           
           {isLoading && (
-            <div className="loading-state">
-              <div className="spinner" />
-              <p>Loading marketplace listings...</p>
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin shadow-[0_0_20px_rgba(var(--primary),0.3)]" />
+              <p className="font-mono text-primary/80 animate-pulse tracking-widest">SCANNING_MARKETPLACE...</p>
             </div>
           )}
           
           {loadingError && (
-            <div className="error-state">
-              <p>⚠️ {loadingError}</p>
+            <div className="bg-destructive/10 border border-destructive/50 text-destructive p-6 rounded-lg text-center backdrop-blur-md">
+              <p className="font-mono font-bold">⚠️ SYSTEM_ERROR: {loadingError}</p>
             </div>
           )}
           
           {!isLoading && !loadingError && experiences.length === 0 && (
-            <div className="empty-state">
-              <p>No experiences available in the marketplace yet.</p>
-              <small>Check back later or be the first to list an experience!</small>
+            <div className="bg-muted/30 border border-primary/10 p-12 rounded-lg text-center backdrop-blur-md glass">
+              <p className="text-xl font-display text-primary mb-2">NO_EXPERIENCES_DETECTED</p>
+              <small className="font-mono text-muted-foreground">CHECK_BACK_LATER OR INITIATE_LISTING</small>
             </div>
           )}
           
-          <div className="experience-grid">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {experiences.map((exp) => (
               <ExperienceCard
                 key={exp.id}

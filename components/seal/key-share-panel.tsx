@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useCurrentAccount, useSignPersonalMessage, useSuiClient } from "@mysten/dapp-kit";
+import type { WalletAccount } from "@mysten/wallet-standard";
 import type { SessionKey } from "@mysten/seal";
-import { toB64 } from "@mysten/sui/utils";
+import { toB64, fromB64 } from "@mysten/sui/utils";
 import { ShieldCheck, Share2, KeyRound, Loader2, RefreshCw, Copy } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -78,15 +79,35 @@ export function SealKeySharePanel() {
       throw new Error("Session key is already being created");
     }
 
+
     try {
       setSessionKeyStatus("creating");
       const ttl = sessionTtl > 0 ? Math.min(sessionTtl, 30) : 15;
+      
+      // Create a wrapper function that adapts the dapp-kit signature to the seal utility signature
+      const signPersonalMessageAdapter = async (args: {
+        message: Uint8Array;
+        account?: WalletAccount | null;
+        chain?: string;
+      }) => {
+        const result = await signPersonalMessage({
+          message: args.message,
+          account: args.account ?? undefined,
+        });
+        // Convert bytes from base64 string to number array to match expected type
+        const bytesArray: number[] = Array.from(fromB64(result.bytes));
+        return {
+          bytes: bytesArray,
+          signature: result.signature,
+        };
+      };
+      
       const sessionKey = await createSessionKeyWithWallet({
         address: account.address,
         packageId,
         ttlMinutes: ttl,
         suiClient,
-        signPersonalMessage,
+        signPersonalMessage: signPersonalMessageAdapter,
         account,
       });
       setSessionKey(sessionKey);
@@ -221,44 +242,41 @@ export function SealKeySharePanel() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
+      <Card className="glass border-primary/20 bg-card/40 backdrop-blur-md shadow-[0_0_30px_rgba(var(--primary),0.05)]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold font-display tracking-wide text-primary">
             <ShieldCheck className="h-5 w-5" />
-            Seal setup
+            SEAL_SETUP_PROTOCOL
           </CardTitle>
-          <CardDescription>
-            Configure the Seal key servers and package used for the namespace check in
-            <code className="ml-2 rounded bg-muted px-2 py-0.5 text-sm">
-              seal_approve
-            </code>
-            .
+          <CardDescription className="font-mono text-xs text-muted-foreground">
+            CONFIGURE_KEY_SERVERS_AND_PACKAGE_FOR_NAMESPACE_CHECK
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Package ID</Label>
+            <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">PACKAGE_ID</Label>
             <Input
               value={packageId}
               placeholder="0x<package>"
               onChange={(e) => setPackageId(e.target.value)}
+              className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
             />
           </div>
           <div className="space-y-2">
-            <Label>Key servers (comma-separated)</Label>
+            <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">KEY_SERVERS_CONFIG</Label>
             <Input
               value={keyServersInput}
               onChange={(e) => setKeyServersInput(e.target.value)}
               placeholder={defaultKeyServerPlaceholder}
+              className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
             />
-            <p className="text-xs text-muted-foreground">
-              Format: <code>objectId@weight</code>, e.g.{" "}
-              <code>0x123...@1,0xabc...@1</code>
+            <p className="text-[10px] font-mono text-muted-foreground opacity-70">
+              FORMAT: <code>objectId@weight</code> (COMMA_SEPARATED)
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
-              <Label>Threshold</Label>
+              <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">THRESHOLD</Label>
               <Input
                 type="number"
                 min={1}
@@ -267,10 +285,11 @@ export function SealKeySharePanel() {
                   const value = Number(e.target.value);
                   setThreshold(Number.isFinite(value) ? value : 1);
                 }}
+                className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
               />
             </div>
             <div className="space-y-2">
-              <Label>Session TTL (mins)</Label>
+              <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">TTL_MINS</Label>
               <Input
                 type="number"
                 min={1}
@@ -280,22 +299,24 @@ export function SealKeySharePanel() {
                   const value = Number(e.target.value);
                   setSessionTtl(Number.isFinite(value) ? value : 15);
                 }}
+                className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
               />
             </div>
             <div className="space-y-2">
-              <Label>Task object</Label>
+              <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">TASK_OBJECT</Label>
               <Input
                 value={taskId}
                 onChange={(e) => setTaskId(e.target.value)}
                 placeholder="0x<task_id>"
+                className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
               />
             </div>
           </div>
-          <div className="flex items-center justify-between rounded border bg-muted/30 px-3 py-2 text-sm">
-            <div className="flex flex-col">
-              <span className="font-medium">{sessionStatusLabel}</span>
-              <span className="text-muted-foreground">
-                Wallet: {account?.address ?? "not connected"}
+          <div className="flex items-center justify-between rounded-lg border border-primary/10 bg-primary/5 px-4 py-3 text-sm">
+            <div className="flex flex-col gap-1">
+              <span className="font-bold font-mono text-primary text-xs uppercase tracking-wider">{sessionStatusLabel}</span>
+              <span className="text-[10px] font-mono text-muted-foreground">
+                WALLET: {account?.address ? `${account.address.substring(0, 6)}...${account.address.substring(account.address.length - 4)}` : "NOT_CONNECTED"}
               </span>
             </div>
             <Button
@@ -306,76 +327,78 @@ export function SealKeySharePanel() {
                 }),
               )}
               disabled={sessionKeyStatus === "creating" || !account}
+              className="border-primary/20 hover:bg-primary/10 hover:text-primary transition-colors font-mono text-xs uppercase tracking-wider"
             >
               {sessionKeyStatus === "creating" && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
               )}
-              {sessionKeyStatus === "ready" ? "Refresh key" : "Create session key"}
+              {sessionKeyStatus === "ready" ? "REFRESH_KEY" : "CREATE_KEY"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="glass border-primary/20 bg-card/40 backdrop-blur-md shadow-[0_0_30px_rgba(var(--primary),0.05)]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold font-display tracking-wide text-primary">
             <Share2 className="h-5 w-5" />
-            Encrypt for another wallet
+            ENCRYPTION_PROTOCOL
           </CardTitle>
-          <CardDescription>
-            Encrypt plaintext with Seal so only the chosen wallet can request the
-            decryption share.
+          <CardDescription className="font-mono text-xs text-muted-foreground">
+            ENCRYPT_PLAINTEXT_FOR_TARGET_WALLET
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Recipient wallet</Label>
+            <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">RECIPIENT_WALLET</Label>
             <Input
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
               placeholder="0x<recipient_address>"
+              className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
             />
           </div>
           <div className="space-y-2">
-            <Label>Plaintext</Label>
+            <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">PLAINTEXT_DATA</Label>
             <Textarea
               rows={5}
               value={plaintext}
               onChange={(e) => setPlaintext(e.target.value)}
-              placeholder="Notes, task content, or a symmetric key to store in Walrus"
+              placeholder="ENTER_NOTES_OR_KEYS..."
+              className="font-mono text-sm bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
             />
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={handleEncrypt} disabled={isEncrypting}>
+            <Button onClick={handleEncrypt} disabled={isEncrypting} className="flex-1 bg-primary text-primary-foreground font-bold font-display tracking-wider hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.4)]">
               {isEncrypting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Encrypt with Seal
+              ENCRYPT_WITH_SEAL
             </Button>
             {ciphertext && (
-              <Button variant="outline" size="icon" onClick={copyCiphertext}>
+              <Button variant="outline" size="icon" onClick={copyCiphertext} className="border-primary/20 hover:bg-primary/10 hover:text-primary transition-colors">
                 <Copy className="h-4 w-4" />
-                <span className="sr-only">Copy ciphertext</span>
+                <span className="sr-only">COPY_CIPHERTEXT</span>
               </Button>
             )}
           </div>
           {ciphertext && (
-            <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
-              <Label className="flex items-center gap-2 text-sm font-semibold">
-                <KeyRound className="h-4 w-4" />
-                Ciphertext (base64)
+            <div className="space-y-2 rounded-lg border border-primary/10 bg-black/50 p-3 shadow-inner">
+              <Label className="flex items-center gap-2 text-xs font-bold font-mono text-primary uppercase tracking-wider">
+                <KeyRound className="h-3 w-3" />
+                CIPHERTEXT_BASE64
               </Label>
-              <Textarea readOnly rows={4} value={ciphertext} className="font-mono text-xs" />
+              <Textarea readOnly rows={4} value={ciphertext} className="font-mono text-[10px] bg-transparent border-none resize-none text-muted-foreground focus:ring-0" />
             </div>
           )}
           {sharePayload && (
-            <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
-              <Label className="flex items-center gap-2 text-sm font-semibold">
-                <Share2 className="h-4 w-4" />
-                Share payload
+            <div className="space-y-2 rounded-lg border border-primary/10 bg-black/50 p-3 shadow-inner">
+              <Label className="flex items-center gap-2 text-xs font-bold font-mono text-primary uppercase tracking-wider">
+                <Share2 className="h-3 w-3" />
+                SHARE_PAYLOAD
               </Label>
-              <Textarea readOnly rows={5} value={sharePayload} className="font-mono text-xs" />
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={copySharePayload}>
-                  Copy payload
+              <Textarea readOnly rows={5} value={sharePayload} className="font-mono text-[10px] bg-transparent border-none resize-none text-muted-foreground focus:ring-0" />
+              <div className="flex justify-end pt-2 border-t border-white/5">
+                <Button variant="outline" size="sm" onClick={copySharePayload} className="h-7 text-[10px] font-mono uppercase border-primary/20 hover:bg-primary/10 hover:text-primary">
+                  COPY_PAYLOAD
                 </Button>
               </div>
             </div>
@@ -383,44 +406,46 @@ export function SealKeySharePanel() {
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2">
+      <Card className="lg:col-span-2 glass border-primary/20 bg-card/40 backdrop-blur-md shadow-[0_0_30px_rgba(var(--primary),0.05)]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold font-display tracking-wide text-primary">
             <RefreshCw className="h-5 w-5" />
-            Decrypt as the recipient
+            DECRYPTION_PROTOCOL
           </CardTitle>
-          <CardDescription>
-            Use your wallet session key to request decryption shares via{" "}
-            <code className="rounded bg-muted px-2 py-0.5 text-sm">seal_approve</code>.
+          <CardDescription className="font-mono text-xs text-muted-foreground">
+            REQUEST_DECRYPTION_SHARES_VIA_SEAL_APPROVE
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Ciphertext</Label>
+            <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">CIPHERTEXT_INPUT</Label>
             <Textarea
               rows={4}
               value={ciphertext}
               onChange={(e) => setCiphertext(e.target.value)}
-              placeholder="Paste the ciphertext you received"
-              className="font-mono text-xs"
+              placeholder="PASTE_CIPHERTEXT_HERE..."
+              className="font-mono text-xs bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/20"
             />
           </div>
           <div className="flex items-center gap-3">
             <Button
               onClick={handleDecrypt}
               disabled={isDecrypting || sessionKeyStatus === "creating"}
+              className="bg-primary text-primary-foreground font-bold font-display tracking-wider hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(var(--primary),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary),0.4)]"
             >
               {isDecrypting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Request keys & decrypt
+              REQUEST_KEYS_&_DECRYPT
             </Button>
-            <p className="text-sm text-muted-foreground">
-              You must be shared on the task to pass the on-chain access check.
+            <p className="text-xs font-mono text-muted-foreground italic">
+              * REQUIRES_ON_CHAIN_ACCESS_VERIFICATION
             </p>
           </div>
           {decryptedText && (
-            <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
-              <Label className="text-sm font-semibold">Decrypted plaintext</Label>
-              <Textarea readOnly rows={4} value={decryptedText} />
+            <div className="space-y-2 rounded-lg border border-green-500/20 bg-green-500/5 p-4 mt-4">
+              <Label className="text-xs font-bold font-mono text-green-500 uppercase tracking-wider flex items-center gap-2">
+                <span>🔓</span> DECRYPTED_PLAINTEXT
+              </Label>
+              <Textarea readOnly rows={4} value={decryptedText} className="font-mono text-sm bg-transparent border-none resize-none text-foreground focus:ring-0" />
             </div>
           )}
         </CardContent>

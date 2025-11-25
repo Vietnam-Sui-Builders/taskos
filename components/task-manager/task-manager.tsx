@@ -52,25 +52,27 @@ export const TaskManager = () => {
 
   return (
     <Tabs defaultValue="my-tasks" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-8">
-        <TabsTrigger value="open-tasks" className="cursor-pointer">
-          Open Tasks
+      <TabsList className="grid w-full grid-cols-3 mb-8 bg-background/50 border border-primary/20 backdrop-blur-md p-1 rounded-lg h-12">
+        <TabsTrigger value="open-tasks" className="cursor-pointer data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-mono uppercase tracking-wider transition-all duration-300 h-full rounded-md border border-transparent data-[state=active]:border-primary/50">
+          OPEN_TASKS
         </TabsTrigger>
-        <TabsTrigger value="my-tasks" className="cursor-pointer">
-          My Tasks
+        <TabsTrigger value="my-tasks" className="cursor-pointer data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-mono uppercase tracking-wider transition-all duration-300 h-full rounded-md border border-transparent data-[state=active]:border-primary/50">
+          MY_TASKS
         </TabsTrigger>
-        <TabsTrigger value="shared-tasks" className="cursor-pointer">
-          Shared Tasks
+        <TabsTrigger value="shared-tasks" className="cursor-pointer data-[state=active]:bg-primary/20 data-[state=active]:text-primary font-mono uppercase tracking-wider transition-all duration-300 h-full rounded-md border border-transparent data-[state=active]:border-primary/50">
+          SHARED_TASKS
         </TabsTrigger>
       </TabsList>
 
       <TabsContent value="open-tasks" className="space-y-4">
         {openTasks.length === 0 ? (
-          <div className="text-center py-12 glass-card rounded-lg animate-fade-in">
-            <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
-            <p className="text-muted-foreground">
-              Create your first task to get started
+          <div className="text-center py-12 glass border border-primary/10 rounded-lg animate-fade-in bg-background/30 backdrop-blur-sm">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/5 flex items-center justify-center border border-primary/10">
+                <Database className="h-8 w-8 text-primary/50" />
+            </div>
+            <h3 className="text-lg font-bold font-display tracking-wide text-primary">NO_TASKS_DETECTED</h3>
+            <p className="text-muted-foreground font-mono text-xs mt-2">
+              INITIATE FIRST TASK SEQUENCE
             </p>
           </div>
         ) : (
@@ -89,11 +91,13 @@ export const TaskManager = () => {
 
       <TabsContent value="my-tasks" className="space-y-4">
         {myTasks.length === 0 ? (
-          <div className="text-center py-12 glass-card rounded-lg animate-fade-in">
-            <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No tasks created</h3>
-            <p className="text-muted-foreground">
-              You haven&apos;t created any tasks yet
+          <div className="text-center py-12 glass border border-primary/10 rounded-lg animate-fade-in bg-background/30 backdrop-blur-sm">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/5 flex items-center justify-center border border-primary/10">
+                <Database className="h-8 w-8 text-primary/50" />
+            </div>
+            <h3 className="text-lg font-bold font-display tracking-wide text-primary">NO_CREATED_TASKS</h3>
+            <p className="text-muted-foreground font-mono text-xs mt-2">
+              YOU HAVE NOT INITIATED ANY TASKS
             </p>
           </div>
         ) : (
@@ -112,11 +116,13 @@ export const TaskManager = () => {
 
       <TabsContent value="shared-tasks" className="space-y-4">
         {sharedTasks.length === 0 ? (
-          <div className="text-center py-12 glass-card rounded-lg animate-fade-in">
-            <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No shared tasks</h3>
-            <p className="text-muted-foreground">
-              No tasks have been shared with you yet.
+          <div className="text-center py-12 glass border border-primary/10 rounded-lg animate-fade-in bg-background/30 backdrop-blur-sm">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/5 flex items-center justify-center border border-primary/10">
+                <Database className="h-8 w-8 text-primary/50" />
+            </div>
+            <h3 className="text-lg font-bold font-display tracking-wide text-primary">NO_SHARED_TASKS</h3>
+            <p className="text-muted-foreground font-mono text-xs mt-2">
+              NO EXTERNAL PROTOCOLS SHARED
             </p>
           </div>
         ) : (

@@ -1,14 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: Inter, sans-serif;
-  --font-mono: JetBrains Mono, monospace;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-display: var(--font-display), "Orbitron", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -43,141 +43,259 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-serif: Source Serif 4, serif;
-  --radius: 0.375rem;
-  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
-  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
-  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
-  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
-  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
-  --tracking-normal: var(--tracking-normal);
-  --shadow-2xl: var(--shadow-2xl);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-md: var(--shadow-md);
-  --shadow: var(--shadow);
-  --shadow-sm: var(--shadow-sm);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-2xs: var(--shadow-2xs);
-  --spacing: var(--spacing);
-  --letter-spacing: var(--letter-spacing);
-  --shadow-offset-y: var(--shadow-offset-y);
-  --shadow-offset-x: var(--shadow-offset-x);
-  --shadow-spread: var(--shadow-spread);
-  --shadow-blur: var(--shadow-blur);
-  --shadow-opacity: var(--shadow-opacity);
-  --color-shadow-color: var(--shadow-color);
-  --color-destructive-foreground: var(--destructive-foreground);
+  --radius: 0.5rem;
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+  --tracking-normal: 0em;
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-xs: 0 1px 1px 0 rgb(0 0 0 / 0.05);
+  --shadow-2xs: 0 1px 0 rgb(0 0 0 / 0.05);
+
+  /* Custom Animations */
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+  --animate-slide-up: slideUp 0.5s ease-out forwards;
+  --animate-gradient-shift: gradient-shift 8s ease infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+
+  @keyframes glow {
+    from {
+      box-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+    }
+    to {
+      box-shadow: 0 0 20px var(--primary), 0 0 30px var(--primary);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    33% {
+      transform: translateY(-20px) rotate(5deg);
+    }
+    66% {
+      transform: translateY(-10px) rotate(-5deg);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), 0 0 40px rgba(99, 102, 241, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.6), 0 0 60px rgba(99, 102, 241, 0.3);
+    }
+  }
 }
 
 :root {
-  --radius: 0.375rem;
-  --background: oklch(1.0000 0 0);
-  --foreground: oklch(0.3211 0 0);
-  --card: oklch(1.0000 0 0);
-  --card-foreground: oklch(0.3211 0 0);
-  --popover: oklch(1.0000 0 0);
-  --popover-foreground: oklch(0.3211 0 0);
-  --primary: oklch(0.6231 0.1880 259.8145);
-  --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.9670 0.0029 264.5419);
-  --secondary-foreground: oklch(0.4461 0.0263 256.8018);
-  --muted: oklch(0.9846 0.0017 247.8389);
-  --muted-foreground: oklch(0.5510 0.0234 264.3637);
-  --accent: oklch(0.9514 0.0250 236.8242);
-  --accent-foreground: oklch(0.3791 0.1378 265.5222);
-  --destructive: oklch(0.6368 0.2078 25.3313);
-  --border: oklch(0.9276 0.0058 264.5313);
-  --input: oklch(0.9276 0.0058 264.5313);
-  --ring: oklch(0.6231 0.1880 259.8145);
-  --chart-1: oklch(0.6231 0.1880 259.8145);
-  --chart-2: oklch(0.5461 0.2152 262.8809);
-  --chart-3: oklch(0.4882 0.2172 264.3763);
-  --chart-4: oklch(0.4244 0.1809 265.6377);
-  --chart-5: oklch(0.3791 0.1378 265.5222);
-  --sidebar: oklch(0.9846 0.0017 247.8389);
-  --sidebar-foreground: oklch(0.3211 0 0);
-  --sidebar-primary: oklch(0.6231 0.1880 259.8145);
-  --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.9514 0.0250 236.8242);
-  --sidebar-accent-foreground: oklch(0.3791 0.1378 265.5222);
-  --sidebar-border: oklch(0.9276 0.0058 264.5313);
-  --sidebar-ring: oklch(0.6231 0.1880 259.8145);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
-  --shadow-color: oklch(0 0 0);
-  --shadow-opacity: 0.1;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-offset-x: 0;
-  --shadow-offset-y: 1px;
-  --letter-spacing: 0em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-  --tracking-normal: 0em;
+  /* Cyber-Industrial Palette - Light Mode (High Contrast Industrial) */
+  --radius: 0.5rem;
+  --background: oklch(0.95 0 0); /* White/Light Grey */
+  --foreground: oklch(0.15 0.02 260); /* Deep Charcoal */
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.02 260);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.02 260);
+
+  --primary: oklch(0.55 0.2 250); /* Electric Blue */
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.9 0 0); /* Light Grey */
+  --secondary-foreground: oklch(0.15 0.02 260);
+
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+
+  --accent: oklch(0.55 0.2 250);
+  --accent-foreground: oklch(1 0 0);
+
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.85 0 0);
+  --input: oklch(0.85 0 0);
+  --ring: oklch(0.55 0.2 250);
+
+  --chart-1: oklch(0.55 0.2 250);
+  --chart-2: oklch(0.5 0.2 200);
+  --chart-3: oklch(0.45 0.2 150);
+  --chart-4: oklch(0.6 0.2 300);
+  --chart-5: oklch(0.6 0.2 350);
+
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.15 0.02 260);
+  --sidebar-primary: oklch(0.55 0.2 250);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.95 0 0);
+  --sidebar-accent-foreground: oklch(0.15 0.02 260);
+  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-ring: oklch(0.55 0.2 250);
+
+  /* Dapp Kit Theme Variables - Light Mode */
+  --dapp-kit-colors-body: oklch(0.15 0.02 260);
+  --dapp-kit-colors-bodyMuted: oklch(0.5 0 0);
+  --dapp-kit-colors-bodyDanger: oklch(0.6 0.2 25);
+  --dapp-kit-colors-primaryButton: oklch(1 0 0);
+  --dapp-kit-colors-outlineButton: oklch(0.55 0.2 250);
+  --dapp-kit-colors-iconButton: oklch(0.15 0.02 260);
+
+  --dapp-kit-backgroundColors-primaryButton: oklch(0.55 0.2 250);
+  --dapp-kit-backgroundColors-primaryButtonHover: oklch(0.5 0.22 250);
+  --dapp-kit-backgroundColors-outlineButtonHover: oklch(0.95 0 0);
+  --dapp-kit-backgroundColors-iconButton: transparent;
+  --dapp-kit-backgroundColors-iconButtonHover: oklch(0.95 0 0);
+  --dapp-kit-backgroundColors-modalOverlay: oklch(0 0 0 / 0.6);
+  --dapp-kit-backgroundColors-modalPrimary: oklch(1 0 0);
+  --dapp-kit-backgroundColors-modalSecondary: oklch(0.98 0 0);
+  --dapp-kit-backgroundColors-dropdownMenu: oklch(1 0 0);
+  --dapp-kit-backgroundColors-dropdownMenuSeparator: oklch(0.9 0 0);
+  --dapp-kit-backgroundColors-walletItemHover: oklch(0.95 0 0);
+  --dapp-kit-backgroundColors-walletItemSelected: oklch(0.9 0 0);
+
+  --dapp-kit-typography-fontFamily: var(--font-sans), ui-sans-serif, system-ui,
+    sans-serif;
+  --dapp-kit-typography-fontStyle: normal;
+  --dapp-kit-typography-lineHeight: 1.5;
+  --dapp-kit-typography-letterSpacing: normal;
+
+  --dapp-kit-fontSizes-small: 14px;
+  --dapp-kit-fontSizes-medium: 16px;
+  --dapp-kit-fontSizes-large: 18px;
+  --dapp-kit-fontSizes-xlarge: 20px;
+
+  --dapp-kit-fontWeights-normal: 400;
+  --dapp-kit-fontWeights-medium: 500;
+  --dapp-kit-fontWeights-bold: 700;
+
+  --dapp-kit-radii-small: 4px;
+  --dapp-kit-radii-medium: 8px;
+  --dapp-kit-radii-large: 12px;
+  --dapp-kit-radii-xlarge: 16px;
+
+  --dapp-kit-blurs-modalOverlay: blur(4px);
 }
 
 .dark {
-  --background: oklch(0.2046 0 0);
-  --foreground: oklch(0.9219 0 0);
-  --card: oklch(0.2686 0 0);
-  --card-foreground: oklch(0.9219 0 0);
-  --popover: oklch(0.2686 0 0);
-  --popover-foreground: oklch(0.9219 0 0);
-  --primary: oklch(0.6231 0.1880 259.8145);
-  --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.2686 0 0);
-  --secondary-foreground: oklch(0.9219 0 0);
-  --muted: oklch(0.2393 0 0);
-  --muted-foreground: oklch(0.7155 0 0);
-  --accent: oklch(0.3791 0.1378 265.5222);
-  --accent-foreground: oklch(0.8823 0.0571 254.1284);
-  --destructive: oklch(0.6368 0.2078 25.3313);
-  --border: oklch(0.3715 0 0);
-  --input: oklch(0.3715 0 0);
-  --ring: oklch(0.6231 0.1880 259.8145);
-  --chart-1: oklch(0.7137 0.1434 254.6240);
-  --chart-2: oklch(0.6231 0.1880 259.8145);
-  --chart-3: oklch(0.5461 0.2152 262.8809);
-  --chart-4: oklch(0.4882 0.2172 264.3763);
-  --chart-5: oklch(0.4244 0.1809 265.6377);
-  --sidebar: oklch(0.2046 0 0);
-  --sidebar-foreground: oklch(0.9219 0 0);
-  --sidebar-primary: oklch(0.6231 0.1880 259.8145);
-  --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.3791 0.1378 265.5222);
-  --sidebar-accent-foreground: oklch(0.8823 0.0571 254.1284);
-  --sidebar-border: oklch(0.3715 0 0);
-  --sidebar-ring: oklch(0.6231 0.1880 259.8145);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --radius: 0.375rem;
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
-  --shadow-color: oklch(0 0 0);
-  --shadow-opacity: 0.1;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-offset-x: 0;
-  --shadow-offset-y: 1px;
-  --letter-spacing: 0em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+  /* Cyber-Industrial Palette - Dark Mode (The Main Event) */
+  --background: oklch(0.12 0.02 260); /* Deep Industrial Blue-Black */
+  --foreground: oklch(0.92 0.01 260); /* Ice White */
+
+  --card: oklch(0.18 0.03 260 / 0.6); /* Glassy Dark */
+  --card-foreground: oklch(0.92 0.01 260);
+
+  --popover: oklch(0.15 0.03 260 / 0.9);
+  --popover-foreground: oklch(0.92 0.01 260);
+
+  --primary: oklch(0.65 0.22 245); /* Neon Cyan */
+  --primary-foreground: oklch(0.1 0.02 260);
+
+  --secondary: oklch(0.25 0.05 260); /* Darker Blue-Grey */
+  --secondary-foreground: oklch(0.92 0.01 260);
+
+  --muted: oklch(0.2 0.03 260);
+  --muted-foreground: oklch(0.6 0.05 260);
+
+  --accent: oklch(0.65 0.22 320); /* Neon Magenta */
+  --accent-foreground: oklch(0.92 0.01 260);
+
+  --destructive: oklch(0.6 0.22 25); /* Neon Red */
+  --destructive-foreground: oklch(0.92 0.01 260);
+
+  --border: oklch(0.3 0.05 260); /* Subtle Blue Border */
+  --input: oklch(0.2 0.03 260);
+  --ring: oklch(0.65 0.22 245);
+
+  --chart-1: oklch(0.65 0.22 245); /* Cyan */
+  --chart-2: oklch(0.65 0.22 320); /* Magenta */
+  --chart-3: oklch(0.7 0.2 140); /* Neon Green */
+  --chart-4: oklch(0.6 0.2 280); /* Purple */
+  --chart-5: oklch(0.7 0.15 40); /* Orange */
+
+  --sidebar: oklch(0.1 0.02 260);
+  --sidebar-foreground: oklch(0.92 0.01 260);
+  --sidebar-primary: oklch(0.65 0.22 245);
+  --sidebar-primary-foreground: oklch(0.1 0.02 260);
+  --sidebar-accent: oklch(0.2 0.03 260);
+  --sidebar-accent-foreground: oklch(0.92 0.01 260);
+  --sidebar-border: oklch(0.25 0.04 260);
+  --sidebar-ring: oklch(0.65 0.22 245);
+
+  /* Dapp Kit Theme Variables - Dark Mode (Cyber-Industrial) */
+  --dapp-kit-colors-body: oklch(0.92 0.01 260);
+  --dapp-kit-colors-bodyMuted: oklch(0.6 0.05 260);
+  --dapp-kit-colors-bodyDanger: oklch(0.6 0.22 25);
+  --dapp-kit-colors-primaryButton: oklch(0.1 0.02 260);
+  --dapp-kit-colors-outlineButton: oklch(0.65 0.22 245);
+  --dapp-kit-colors-iconButton: oklch(0.92 0.01 260);
+
+  --dapp-kit-backgroundColors-primaryButton: oklch(0.65 0.22 245);
+  --dapp-kit-backgroundColors-primaryButtonHover: oklch(0.7 0.24 245);
+  --dapp-kit-backgroundColors-outlineButtonHover: oklch(0.2 0.03 260 / 0.5);
+  --dapp-kit-backgroundColors-iconButton: transparent;
+  --dapp-kit-backgroundColors-iconButtonHover: oklch(0.2 0.03 260 / 0.5);
+  --dapp-kit-backgroundColors-modalOverlay: oklch(0 0 0 / 0.8);
+  --dapp-kit-backgroundColors-modalPrimary: oklch(0.15 0.03 260 / 0.95);
+  --dapp-kit-backgroundColors-modalSecondary: oklch(0.18 0.03 260 / 0.8);
+  --dapp-kit-backgroundColors-dropdownMenu: oklch(0.15 0.03 260 / 0.95);
+  --dapp-kit-backgroundColors-dropdownMenuSeparator: oklch(0.3 0.05 260);
+  --dapp-kit-backgroundColors-walletItemHover: oklch(0.2 0.03 260 / 0.6);
+  --dapp-kit-backgroundColors-walletItemSelected: oklch(0.25 0.05 260 / 0.8);
+
+  --dapp-kit-typography-fontFamily: var(--font-sans), ui-sans-serif, system-ui,
+    sans-serif;
+  --dapp-kit-typography-fontStyle: normal;
+  --dapp-kit-typography-lineHeight: 1.5;
+  --dapp-kit-typography-letterSpacing: normal;
+
+  --dapp-kit-fontSizes-small: 14px;
+  --dapp-kit-fontSizes-medium: 16px;
+  --dapp-kit-fontSizes-large: 18px;
+  --dapp-kit-fontSizes-xlarge: 20px;
+
+  --dapp-kit-fontWeights-normal: 400;
+  --dapp-kit-fontWeights-medium: 500;
+  --dapp-kit-fontWeights-bold: 700;
+
+  --dapp-kit-radii-small: 4px;
+  --dapp-kit-radii-medium: 8px;
+  --dapp-kit-radii-large: 12px;
+  --dapp-kit-radii-xlarge: 16px;
+
+  --dapp-kit-blurs-modalOverlay: blur(8px);
 }
 
 @layer base {
@@ -188,11 +306,187 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
-    letter-spacing: var(--tracking-normal);
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: radial-gradient(
+        circle at 50% 0%,
+        oklch(0.2 0.1 260 / 0.2),
+        transparent 70%
+      ),
+      linear-gradient(to bottom, transparent, oklch(0.1 0.02 260 / 0.8));
+  }
+
+  /* Glassmorphism Utilities */
+  .glass {
+    @apply bg-card/60 backdrop-blur-md border border-white/10 shadow-lg;
+  }
+
+  .glass-hover {
+    @apply hover:bg-card/80 hover:border-primary/50 transition-all duration-300;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px var(--primary);
+  }
+
+  /* Cyber-Industrial Utilities */
+  :root {
+    --cyber-black: #050505;
+    --cyber-dark: #0a0a0a;
+    --cyber-gray: #1a1a1a;
+    --neon-cyan: #00f3ff;
+    --neon-purple: #bc13fe;
+    --neon-green: #0aff0a;
+    --glass-border: rgba(255, 255, 255, 0.1);
+  }
+
+  .cyber-bg {
+    background-color: var(--cyber-black);
+    background-image: 
+      linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .cyber-glass-card {
+    background: rgba(10, 10, 10, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Tech Border Effect */
+  .tech-border {
+    position: relative;
+    border: 1px solid rgba(0, 243, 255, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .tech-border::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 10px;
+    height: 10px;
+    border-top: 2px solid var(--neon-cyan);
+    border-left: 2px solid var(--neon-cyan);
+    transition: all 0.3s ease;
+  }
+
+  .tech-border::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-bottom: 2px solid var(--neon-cyan);
+    border-right: 2px solid var(--neon-cyan);
+    transition: all 0.3s ease;
+  }
+
+  .tech-border:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+  }
+
+  .tech-border:hover::before,
+  .tech-border:hover::after {
+    width: 100%;
+    height: 100%;
+    opacity: 0.5;
+  }
+
+  /* Glitch Text Effect */
+  .glitch-text {
+    position: relative;
+    color: white;
+  }
+
+  .glitch-text::before,
+  .glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--cyber-black);
+  }
+
+  .glitch-text::before {
+    left: 2px;
+    text-shadow: -1px 0 var(--neon-purple);
+    clip: rect(24px, 550px, 90px, 0);
+    animation: glitch-anim-2 3s infinite linear alternate-reverse;
+  }
+
+  .glitch-text::after {
+    left: -2px;
+    text-shadow: -1px 0 var(--neon-cyan);
+    clip: rect(85px, 550px, 140px, 0);
+    animation: glitch-anim 2.5s infinite linear alternate-reverse;
+  }
+
+  @keyframes glitch-anim {
+    0% { clip: rect(14px, 9999px, 127px, 0); }
+    20% { clip: rect(81px, 9999px, 63px, 0); }
+    40% { clip: rect(112px, 9999px, 24px, 0); }
+    60% { clip: rect(35px, 9999px, 154px, 0); }
+    80% { clip: rect(66px, 9999px, 32px, 0); }
+    100% { clip: rect(98px, 9999px, 86px, 0); }
+  }
+
+  @keyframes glitch-anim-2 {
+    0% { clip: rect(129px, 9999px, 36px, 0); }
+    20% { clip: rect(36px, 9999px, 4px, 0); }
+    40% { clip: rect(88px, 9999px, 92px, 0); }
+    60% { clip: rect(7px, 9999px, 129px, 0); }
+    80% { clip: rect(55px, 9999px, 76px, 0); }
+    100% { clip: rect(23px, 9999px, 14px, 0); }
+  }
+
+  /* Neon Glow Utilities */
+  .text-neon-cyan {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
+  }
+
+  .text-neon-purple {
+    color: var(--neon-purple);
+    text-shadow: 0 0 5px rgba(188, 19, 254, 0.5);
+  }
+
+  .border-neon-cyan {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+  }
+
+  /* Scanline Effect */
+  .scanline {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0) 50%,
+      rgba(0, 0, 0, 0.1) 50%,
+      rgba(0, 0, 0, 0.1)
+    );
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.3;
   }
 }
 
+/* Keep existing Dapp Kit styles */
 /* ========================================
    @mysten/dapp-kit Styles
    ======================================== */
@@ -297,6 +591,15 @@
   background-color: var(--dapp-kit-backgroundColors-iconButtonHover);
 }
 
+[data-dapp-kit].Button_primaryButton__1sxqfmb0:hover,
+[data-dapp-kit] .Button_primaryButton__1sxqfmb0:hover {
+  background-color: var(--dapp-kit-backgroundColors-primaryButtonHover);
+  /* Cyber-Industrial Enhancements */
+  box-shadow: 0 0 30px oklch(0.65 0.22 245 / 0.5),
+    0 0 60px oklch(0.65 0.22 245 / 0.2);
+  transform: translateY(-2px);
+}
+
 /* Connect Modal Component */
 [data-dapp-kit].ConnectModal_overlay__gz8z90,
 [data-dapp-kit] .ConnectModal_overlay__gz8z90 {
@@ -328,6 +631,10 @@
   min-height: 50vh;
   max-height: 85vh;
   max-width: 700px;
+  /* Cyber-Industrial Enhancements */
+  backdrop-filter: blur(16px);
+  border: 1px solid oklch(0.65 0.22 245 / 0.3);
+  box-shadow: 0 0 40px oklch(0.65 0.22 245 / 0.2), 0 8px 32px oklch(0 0 0 / 0.4);
 }
 
 [data-dapp-kit].ConnectModal_whatIsAWalletButton__gz8z93,
@@ -444,12 +751,21 @@
 }
 
 [data-dapp-kit].Button_buttonVariants_variant_primary__x1s81q1,
-[data-dapp-kit] .Button_buttonVariants_variant_primary__x1s81q1 {
+[data-dapp-kit].Button_primaryButton__1sxqfmb0,
+[data-dapp-kit] .Button_primaryButton__1sxqfmb0 {
   background-color: var(--dapp-kit-backgroundColors-primaryButton);
   color: var(--dapp-kit-colors-primaryButton);
-  box-shadow: var(--dapp-kit-shadows-primaryButton);
+  border-radius: var(--dapp-kit-radii-large);
+  padding: 12px 24px;
+  font-weight: var(--dapp-kit-fontWeights-medium);
+  /* Cyber-Industrial Enhancements */
+  border: 1px solid oklch(0.65 0.22 245 / 0.5);
+  box-shadow: 0 0 20px oklch(0.65 0.22 245 / 0.3);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
 }
-
 [data-dapp-kit].Button_buttonVariants_variant_primary__x1s81q1:hover,
 [data-dapp-kit] .Button_buttonVariants_variant_primary__x1s81q1:hover {
   background-color: var(--dapp-kit-backgroundColors-primaryButtonHover);
@@ -513,128 +829,42 @@
 
 [data-dapp-kit].Text_textVariants_mono_true__2bv1ur7,
 [data-dapp-kit] .Text_textVariants_mono_true__2bv1ur7 {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-/* Connection Status Component */
-[data-dapp-kit].ConnectionStatus_container__nckm2d0,
-[data-dapp-kit] .ConnectionStatus_container__nckm2d0 {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-
-[data-dapp-kit].ConnectionStatus_walletIcon__nckm2d1,
-[data-dapp-kit] .ConnectionStatus_walletIcon__nckm2d1 {
-  object-fit: cover;
-  width: 72px;
-  height: 72px;
-  border-radius: var(--dapp-kit-radii-large);
-}
-
-[data-dapp-kit].ConnectionStatus_title__nckm2d2,
-[data-dapp-kit] .ConnectionStatus_title__nckm2d2 {
-  margin-top: 12px;
-}
-
-[data-dapp-kit].ConnectionStatus_connectionStatus__nckm2d3,
-[data-dapp-kit] .ConnectionStatus_connectionStatus__nckm2d3 {
-  margin-top: 4px;
-}
-
-[data-dapp-kit].ConnectionStatus_retryButtonContainer__nckm2d4,
-[data-dapp-kit] .ConnectionStatus_retryButtonContainer__nckm2d4 {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-}
-
-/* Info Section Component */
-[data-dapp-kit].InfoSection_container__1wtioi70,
-[data-dapp-kit] .InfoSection_container__1wtioi70 {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Getting Started Component */
-[data-dapp-kit].GettingStarted_container__1fp07e10,
-[data-dapp-kit] .GettingStarted_container__1fp07e10 {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-[data-dapp-kit].GettingStarted_content__1fp07e11,
-[data-dapp-kit] .GettingStarted_content__1fp07e11 {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex-grow: 1;
-  gap: 20px;
-  padding: 40px;
-}
-
-[data-dapp-kit].GettingStarted_installButtonContainer__1fp07e12,
-[data-dapp-kit] .GettingStarted_installButtonContainer__1fp07e12 {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-}
-
-/* What Is A Wallet Component */
-[data-dapp-kit].WhatIsAWallet_container__1ktpkq90,
-[data-dapp-kit] .WhatIsAWallet_container__1ktpkq90 {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-[data-dapp-kit].WhatIsAWallet_content__1ktpkq91,
-[data-dapp-kit] .WhatIsAWallet_content__1ktpkq91 {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex-grow: 1;
-  gap: 20px;
-  padding: 40px;
-}
-
-/* Wallet List Component */
-[data-dapp-kit].WalletList_container__1v2s6cz0,
-[data-dapp-kit] .WalletList_container__1v2s6cz0 {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }
 
 /* Wallet List Item Component */
-[data-dapp-kit].WalletListItem_container__1dqqtqs0,
-[data-dapp-kit] .WalletListItem_container__1dqqtqs0 {
-  display: flex;
-}
-
-[data-dapp-kit].WalletListItem_walletItem__1dqqtqs1,
-[data-dapp-kit] .WalletListItem_walletItem__1dqqtqs1 {
+[data-dapp-kit].WalletListItem_walletItem__1dqqtqs0,
+[data-dapp-kit] .WalletListItem_walletItem__1dqqtqs0 {
   display: flex;
   align-items: center;
-  flex-grow: 1;
-  padding: 8px;
-  gap: 8px;
+  gap: 12px;
+  padding: 12px;
   border-radius: var(--dapp-kit-radii-large);
+  cursor: pointer;
+  /* Cyber-Industrial Enhancements */
+  border: 1px solid oklch(0.3 0.05 260 / 0.3);
+  background: oklch(0.18 0.03 260 / 0.3);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
 }
 
-[data-dapp-kit].WalletListItem_walletItem__1dqqtqs1:hover,
-[data-dapp-kit] .WalletListItem_walletItem__1dqqtqs1:hover {
+[data-dapp-kit].WalletListItem_walletItem__1dqqtqs0:hover,
+[data-dapp-kit] .WalletListItem_walletItem__1dqqtqs0:hover {
   background-color: var(--dapp-kit-backgroundColors-walletItemHover);
+  /* Cyber-Industrial Enhancements */
+  border-color: oklch(0.65 0.22 245 / 0.5);
+  box-shadow: 0 0 20px oklch(0.65 0.22 245 / 0.2);
+  transform: translateX(4px);
 }
 
 [data-dapp-kit].WalletListItem_selectedWalletItem__1dqqtqs2,
 [data-dapp-kit] .WalletListItem_selectedWalletItem__1dqqtqs2 {
   background-color: var(--dapp-kit-backgroundColors-walletItemSelected);
-  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.05);
+  /* Cyber-Industrial Enhancements */
+  border-color: oklch(0.65 0.22 245);
+  box-shadow: 0 0 25px oklch(0.65 0.22 245 / 0.3),
+    inset 0 0 20px oklch(0.65 0.22 245 / 0.1);
 }
 
 [data-dapp-kit].WalletListItem_walletIcon__1dqqtqs3,

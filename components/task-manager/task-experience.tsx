@@ -281,16 +281,22 @@ export function TaskExperience({ taskId }: TaskExperienceProps) {
       await suiClient.waitForTransaction({ digest: resp.digest });
       await queryClient.invalidateQueries({ queryKey: ["testnet", "getObject"] });
 
-      const createdExperience = resp.objectChanges?.find(
+      // Fetch transaction details to get object changes
+      const txDetails = await suiClient.getTransactionBlock({
+        digest: resp.digest,
+        options: { showObjectChanges: true },
+      });
+
+      const createdExperience = txDetails.objectChanges?.find(
         (change: any) =>
           change.type === "created" &&
           typeof change.objectType === "string" &&
           change.objectType.includes("::experience::ExperienceNFT")
       );
 
-      if (createdExperience?.objectId) {
-        setExperienceId(createdExperience.objectId);
-        await createSealPolicyForExperience(createdExperience.objectId, policyIdString, walrusBlobForPolicy);
+      if (createdExperience && 'objectId' in createdExperience) {
+        setExperienceId(createdExperience.objectId as string);
+        await createSealPolicyForExperience(createdExperience.objectId as string, policyIdString, walrusBlobForPolicy);
       }
 
       toast.success("Experience NFT minted!");

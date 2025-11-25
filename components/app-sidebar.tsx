@@ -167,33 +167,33 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
+    <Sidebar collapsible="offcanvas" {...props} className="border-r border-primary/20 bg-sidebar/80 backdrop-blur-xl">
+      <SidebarHeader className="border-b border-primary/10 pb-4 pt-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              className="data-[slot=sidebar-menu-button]:p-1.5! hover:bg-primary/10 hover:text-primary transition-colors duration-300 group"
             >
               <a href="#">
-                <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">Task Manager</span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 text-primary group-hover:bg-primary/20 group-hover:shadow-[0_0_10px_rgba(var(--primary),0.3)] transition-all duration-300">
+                  <IconInnerShadowTop className="size-5" />
+                </div>
+                <span className="text-lg font-bold font-display tracking-widest text-foreground group-hover:text-primary transition-colors">TASK_OS</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <div className="px-2 w-full h-8">
+      <SidebarContent className="px-2 py-4 space-y-6">
+        <div className="px-2 w-full">
           <CreateTask />
         </div>
         <NavMain items={data.navMain} />
         {/* <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
-      <SidebarFooter>
-
-                  {/* <ConnectButton /> */}
+      <SidebarFooter className="border-t border-primary/10 pt-4 pb-4 bg-sidebar/50">
         <CustomBtn />
         <NavUser user={data.user} />
       </SidebarFooter>
