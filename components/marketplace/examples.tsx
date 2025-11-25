@@ -16,7 +16,12 @@ export function ListTaskAsExperience({ taskId, price }: { taskId: string; price:
       const experienceId = await getExperienceIdFromTask(taskId);
       
       // List in marketplace
-      const listingId = await listExperience(experienceId, price);
+      const listingId = await listExperience({
+        experienceId,
+        price,
+        licenseType: 'personal',
+        copies: 5,
+      });
       
       console.log('Experience listed:', listingId);
       alert('Your experience is now listed in the marketplace!');

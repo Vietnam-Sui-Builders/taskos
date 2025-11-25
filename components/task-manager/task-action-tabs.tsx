@@ -9,6 +9,7 @@ import { TaskUpdate } from "./task-update";
 import { TaskComments } from "./task-comments";
 import { TaskRewards } from "./task-rewards";
 import { TaskSubmitCompletion } from "./task-submit-completion";
+import { TaskExperience } from "./task-experience";
 
 interface TaskActionTabsProps {
     taskId: string;
@@ -21,7 +22,7 @@ interface TaskActionTabsProps {
 export function TaskActionTabs({ taskId, className }: TaskActionTabsProps) {
     return (
         <Tabs defaultValue="view" className={cn("h-full flex flex-col", className)}>
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-8">
                 <TabsTrigger value="view" className="cursor-pointer">
                     View
                 </TabsTrigger>
@@ -42,6 +43,9 @@ export function TaskActionTabs({ taskId, className }: TaskActionTabsProps) {
                 </TabsTrigger>
                 <TabsTrigger value="share" className="cursor-pointer">
                     Share
+                </TabsTrigger>
+                <TabsTrigger value="experience" className="cursor-pointer">
+                    Experience
                 </TabsTrigger>
             </TabsList>
 
@@ -72,6 +76,10 @@ export function TaskActionTabs({ taskId, className }: TaskActionTabsProps) {
 
                 <TabsContent value="share" className="h-full">
                     <ShareTask taskId={taskId} />
+                </TabsContent>
+
+                <TabsContent value="experience" className="h-full">
+                    <TaskExperience taskId={taskId} />
                 </TabsContent>
             </div>
         </Tabs>

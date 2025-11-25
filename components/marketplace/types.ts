@@ -18,7 +18,7 @@ export interface Experience {
 export interface PurchaseListing {
   id?: string;
   experienceId: string;
-  licenseType: 'personal' | 'commercial' | 'ai_training';
+  licenseType: 'personal' | 'commercial' | 'exclusive' | 'subscription' | 'view_only';
   price: number;
 }
 

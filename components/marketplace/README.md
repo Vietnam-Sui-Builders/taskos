@@ -19,15 +19,15 @@ Create a transparent, secure, and incentive-driven task management platform that
 ### 📝 Testnet Contract Addresses
 
 ```bash
-NEXT_PUBLIC_PACKAGE_ID=0x087d18cee67a2328e35387c5cecb0a8a90a9ef76bade7a22e1e6f0b814cb2f3e
-NEXT_PUBLIC_TASKS_REGISTRY_ID=0xc232705c9006da731b18aa2e1e65ecab4314ab02b0cfc0b6f3d0d77fb8e95bbc
-NEXT_PUBLIC_PUBLISHER_ID=0xcb96b8f591a7f963a1323601a8cb4d0963f268cbba2021834453ac53b7ddc8ea
-NEXT_PUBLIC_VERSION_ID=0x66805cdae2fdab67618842c23797c597257a5a735034fa948d66a22264cdb7c1
+NEXT_PUBLIC_PACKAGE_ID=0x3ec252316a2d35122978c2c5e3839bd0c4acfd34abde5217b92ebeb943199e1e
+NEXT_PUBLIC_TASKS_REGISTRY_ID=0xd3d7b9d4dd5466a17d8f60d07fd8f84e162586e0eae6a0004f90ad1aa47be238
+NEXT_PUBLIC_PUBLISHER_ID=0x6d36f30a594e6a588de5fd042b6c6bfef4e32764bf5e5229896bd5ac751915a7
+NEXT_PUBLIC_VERSION_ID=0x2615265ddcde07d972f73063fab6dee1447c46968768deb5344730a9e831b499
 ```
 
 **Explorer Links:**
-- [Package on Sui Explorer](https://suiexplorer.com/object/0xd9a9971440976714e8b9fb6bc5f1aefbc9fca252612b1275c3e33d3c2774fec0?network=testnet)
-- [Task Registry](https://suiexplorer.com/object/0xed26a9cf9f93ac8f017ecd9853a91de5238dc71fdcccb940ee8f5ee2b100c1c9?network=testnet)
+- [Package on Sui Explorer](https://suiexplorer.com/object/0x3ec252316a2d35122978c2c5e3839bd0c4acfd34abde5217b92ebeb943199e1e?network=testnet)
+- [Task Registry](https://suiexplorer.com/object/0xd3d7b9d4dd5466a17d8f60d07fd8f84e162586e0eae6a0004f90ad1aa47be238?network=testnet)
 
 ---
 
@@ -81,7 +81,8 @@ NEXT_PUBLIC_VERSION_ID=0x66805cdae2fdab67618842c23797c597257a5a735034fa948d66a22
 - Delete tasks (hard delete, owner only)
 
 **1.3 Task Status Workflow**
-- **TODO** → **IN PROGRESS** → **COMPLETED** → **ARCHIVED**
+- **TODO** → **IN PROGRESS** → **COMPLETED** → **APPROVED** → **ARCHIVED**
+- Approval is a distinct on-chain step that triggers reward release
 - Status changes automatically update TaskRegistry indices
 - Real-time sync across all collaborators
 
@@ -102,7 +103,7 @@ NEXT_PUBLIC_VERSION_ID=0x66805cdae2fdab67618842c23797c597257a5a735034fa948d66a22
 
 **3.1 Content Encryption**
 - Upload encrypted task content to Walrus
-- Store blob IDs on-chain
+- Store blob IDs on-chain (content, attachments, completed result)
 - Integrate with Seal protocol for IBE (Identity-Based Encryption)
 
 **3.2 File Attachments**
@@ -142,7 +143,7 @@ NEXT_PUBLIC_VERSION_ID=0x66805cdae2fdab67618842c23797c597257a5a735034fa948d66a22
 - Assignee eligible for reward upon completion
 
 **5.3 Reward Distribution**
-- Owner approves task completion
+- Owner approves task completion (status moves to APPROVED)
 - Automatic reward transfer to assignee
 - One-time approval (cannot re-approve)
 
@@ -162,6 +163,45 @@ NEXT_PUBLIC_VERSION_ID=0x66805cdae2fdab67618842c23797c597257a5a735034fa948d66a22
 - Get tasks by status
 - Count tasks by status
 - Real-time updates via events
+
+### 7. Experience Data & Marketplace
+
+**Objective**
+- Turn approved tasks into on-chain Experience NFTs that carry Walrus blob IDs and Seal policy references for encrypted artifacts.
+- Sell experiences with clear licensing, copy limits, and access controls enforced by SEAL policies.
+
+**Core Objects**
+- **ExperienceNFT:** Links to task UID, Walrus content/result blobs, Seal policy ID, license type, copy limit, royalty %, and creator address.
+- **Listing:** Price (SUI), currency, remaining copies, license type, status (draft/active/paused), optional subscription duration, and optional allowlist/blocked list.
+- **Purchase Record:** Buyer address, timestamp, license type, expiry (for subscriptions), decrypted access proof, and rating placeholder.
+
+**Minting Flow**
+- Only tasks in **APPROVED** status can be minted; one ExperienceNFT per approved task.
+- Mint stores Walrus blob IDs (content/result) and Seal policy IDs for decryption namespaces.
+- Call `task_manage::mint_experience_from_task(...)` to enforce the approval gate, de-duplicate per task, and emit Walrus/SEAL metadata alongside the NFT mint.
+- Optional auto-create listing at mint with default price, license type, and copy limit.
+- Emit `ExperienceMinted` event with task id, nft id, walrus_blob_ids, seal_policy_id, and license metadata.
+
+**Listing & Licensing**
+- License presets: `personal`, `commercial`, `exclusive`, `subscription` (time-bound), `view_only`.
+- Copy limits enforced on-chain; `exclusive` implicitly sets copy limit to 1.
+- Creators can pause/resume listings and adjust price/copy limits while preserving historical purchases.
+
+**Purchase & Provisioning**
+- Purchase debits buyer in SUI, decrements copy count, and emits `ExperiencePurchased` with buyer, nft id, price, license type, and remaining copies.
+- Access provisioning updates the Seal allowlist (or writes subscription expiry) and records the buyer in a dynamic field for audit.
+- Provide a purchase receipt with Walrus blob references and Seal policy info for client-side decryption.
+
+**SEAL Policy Patterns**
+- **Private:** Owner-only access; no listing.
+- **Allowlist:** Wallet addresses added on purchase; supports batch allowlist updates.
+- **Subscription:** Purchase writes expiry timestamp; access check validates current time against expiry.
+- **Copy-limited:** Enforced by listing copy counter and event emission for exhaustion.
+
+**Post-Mint Updates**
+- Creators can update price and add more copies (except for exclusive).
+- Buyers can submit one rating (1–5) per wallet; store average rating and count on-chain.
+- Emit `ExperienceUpdated` and `ExperienceRated` events for UI sync and analytics.
 
 ---
 
@@ -218,11 +258,13 @@ NEXT_PUBLIC_VERSION_ID=0x66805cdae2fdab67618842c23797c597257a5a735034fa948d66a22
   image_url: String,
   content_blob_id: Option<String>,
   file_blob_ids: vector<String>,
+  result_blob_id: Option<String>,
   created_at: u64,
   updated_at: u64,
   due_date: Option<u64>,
   priority: u8,
-  status: u8,
+  status: u8, // 0 TODO, 1 IN_PROGRESS, 2 COMPLETED, 3 APPROVED, 4 ARCHIVED
+  visibility: u8, // 0 private, 1 team, 2 public
   category: String,
   tags: vector<String>
 }
@@ -257,7 +299,7 @@ cp .env.example .env.local
 ```env
 NEXT_PUBLIC_PACKAGE_ID=<your_package_id>
 NEXT_PUBLIC_VERSION_ID=<your_version_object_id>
-NEXT_PUBLIC_TASK_REGISTRY_ID=<your_task_registry_id>
+NEXT_PUBLIC_TASKS_REGISTRY_ID=<your_task_registry_id>
 ```
 
 See [SETUP.md](./SETUP.md) for detailed deployment instructions.
@@ -472,4 +514,3 @@ For bugs or feature requests, please open an issue on GitHub.
 ---
 
 Built with ❤️ on Sui Blockchain
-

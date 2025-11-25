@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { STATUS_TODO, STATUS_IN_PROGRESS, STATUS_COMPLETED, STATUS_ARCHIVED } from "@/types";
+import { STATUS_TODO, STATUS_IN_PROGRESS, STATUS_COMPLETED, STATUS_APPROVED, STATUS_ARCHIVED } from "@/types";
 
 interface TaskUpdateProps {
     taskId: string;
@@ -59,6 +59,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
         : null;
 
     const currentTags = fields ? (fields.tags as string[]) || [] : [];
+    const taskStatus = fields ? Number(fields.status ?? 0) : 0;
 
     const updateTaskInfo = async () => {
         if (!taskId || !account) return;
@@ -181,6 +182,51 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
             setStatus("");
         } catch (error) {
             handleTransactionError(error, "Failed to update status");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const updateStatusToApproved = async () => {
+        if (!taskId || !account) return;
+        if (taskStatus !== STATUS_COMPLETED) {
+            toast.error("Task must be completed before marking approved");
+            return;
+        }
+
+        const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+        const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
+        const taskRegistryId = process.env.NEXT_PUBLIC_TASKS_REGISTRY_ID;
+
+        if (!packageId || !versionObjectId || !taskRegistryId) {
+            toast.error("Configuration error");
+            return;
+        }
+
+        setIsUpdating(true);
+
+        try {
+            const tx = new Transaction();
+            
+            tx.moveCall({
+                target: `${packageId}::task_manage::update_status`,
+                arguments: [
+                    tx.object(versionObjectId),
+                    tx.object(taskId),
+                    tx.pure.u8(STATUS_APPROVED),
+                    tx.object("0x6"),
+                    tx.object(taskRegistryId),
+                ],
+            });
+
+            const resp = await signAndExecuteTransaction({ transaction: tx });
+            await suiClient.waitForTransaction({ digest: resp.digest });
+            await queryClient.invalidateQueries({ queryKey: ["testnet", "getObject"] });
+
+            toast.success("Status set to APPROVED");
+            setStatus("");
+        } catch (error) {
+            handleTransactionError(error, "Failed to approve task");
         } finally {
             setIsUpdating(false);
         }
@@ -358,7 +404,7 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="Enter new title"
-                                disabled={isUpdating}
+                                disabled={isUpdating || taskStatus >= STATUS_COMPLETED}
                             />
                         </div>
                         <div className="space-y-2">
@@ -367,11 +413,11 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Enter new description"
-                                disabled={isUpdating}
+                                disabled={isUpdating || taskStatus >= STATUS_COMPLETED}
                                 rows={3}
                             />
                         </div>
-                        <Button onClick={updateTaskInfo} disabled={isUpdating || !title.trim() || !description.trim()}>
+                        <Button onClick={updateTaskInfo} disabled={isUpdating || !title.trim() || !description.trim() || taskStatus >= STATUS_COMPLETED}>
                             Update Info
                         </Button>
                     </div>
@@ -409,13 +455,29 @@ export function TaskUpdate({ taskId }: TaskUpdateProps) {
                                     <SelectItem value={String(STATUS_TODO)}>To Do</SelectItem>
                                     <SelectItem value={String(STATUS_IN_PROGRESS)}>In Progress</SelectItem>
                                     <SelectItem value={String(STATUS_COMPLETED)}>Completed</SelectItem>
+                                    <SelectItem value={String(STATUS_APPROVED)}>Approved</SelectItem>
                                     <SelectItem value={String(STATUS_ARCHIVED)}>Archived</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button onClick={updateStatus} disabled={isUpdating || !status}>
-                            Update Status
-                        </Button>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button onClick={updateStatus} disabled={isUpdating || !status} className="flex-1">
+                                Update Status
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={updateStatusToApproved}
+                                disabled={isUpdating || taskStatus !== STATUS_COMPLETED}
+                                className="flex-1"
+                            >
+                                Mark Approved
+                            </Button>
+                        </div>
+                        {taskStatus !== STATUS_COMPLETED && taskStatus !== STATUS_APPROVED && (
+                            <p className="text-xs text-muted-foreground">
+                                Complete the task first to unlock approval.
+                            </p>
+                        )}
                     </div>
 
                     {/* Update Category */}

@@ -5,6 +5,7 @@ import { useSignAndExecuteTransaction, useSuiClient, useCurrentAccount, useSuiCl
 import { Transaction } from "@mysten/sui/transactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { handleTransactionError } from "@/lib/errorHandling";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,20 +47,33 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
 
     const taskStatus = fields ? fields.status as number : 0;
 
+    const showConfigError = (missing: string[]) => {
+        toast.error("Configuration error", {
+            description: `Missing env: ${missing.join(", ")}`,
+        });
+    };
+
     const depositReward = async () => {
         if (!taskId || !account || !depositAmount) return;
 
         const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
         const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
+        const taskRegistryId = process.env.NEXT_PUBLIC_TASKS_REGISTRY_ID;
+        const hasRegistry = !!taskRegistryId;
 
         if (!packageId || !versionObjectId) {
-            toast.error("Configuration error");
+            const missing = [];
+            if (!packageId) missing.push("NEXT_PUBLIC_PACKAGE_ID");
+            if (!versionObjectId) missing.push("NEXT_PUBLIC_VERSION_ID");
+            showConfigError(missing);
             return;
         }
 
         const amountInMist = parseFloat(depositAmount) * 1_000_000_000; // Convert SUI to MIST
         if (isNaN(amountInMist) || amountInMist <= 0) {
-            toast.error("Invalid amount");
+            toast.error("Invalid amount", {
+                description: "Enter a positive SUI amount to deposit.",
+            });
             return;
         }
 
@@ -89,9 +103,7 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
             setDepositAmount("");
         } catch (error) {
             console.error("Error depositing reward:", error);
-            toast.error("Failed to deposit reward", {
-                description: error instanceof Error ? error.message : "An unexpected error occurred",
-            });
+            handleTransactionError(error, "Failed to deposit reward");
         } finally {
             setIsProcessing(false);
         }
@@ -104,7 +116,10 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
         const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
 
         if (!packageId || !versionObjectId) {
-            toast.error("Configuration error");
+            const missing = [];
+            if (!packageId) missing.push("NEXT_PUBLIC_PACKAGE_ID");
+            if (!versionObjectId) missing.push("NEXT_PUBLIC_VERSION_ID");
+            showConfigError(missing);
             return;
         }
 
@@ -131,7 +146,7 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
             setAssigneeAddress("");
         } catch (error) {
             console.error("Error setting assignee:", error);
-            toast.error("Failed to set assignee");
+            handleTransactionError(error, "Failed to set assignee");
         } finally {
             setIsProcessing(false);
         }
@@ -144,12 +159,17 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
         const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
 
         if (!packageId || !versionObjectId) {
-            toast.error("Configuration error");
+            const missing = [];
+            if (!packageId) missing.push("NEXT_PUBLIC_PACKAGE_ID");
+            if (!versionObjectId) missing.push("NEXT_PUBLIC_VERSION_ID");
+            showConfigError(missing);
             return;
         }
 
         if (taskStatus !== 2) { // STATUS_COMPLETED = 2
-            toast.error("Task must be completed before approving");
+            toast.error("Task must be completed before approving", {
+                description: "Submit completion first, then retry approval.",
+            });
             return;
         }
 
@@ -160,10 +180,9 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
             
             tx.moveCall({
                 target: `${packageId}::task_manage::approve_completion`,
-                arguments: [
-                    tx.object(versionObjectId),
-                    tx.object(taskId),
-                ],
+                arguments: hasRegistry
+                    ? [tx.object(versionObjectId), tx.object(taskId), tx.object(taskRegistryId!)]
+                    : [tx.object(versionObjectId), tx.object(taskId)],
             });
 
             const resp = await signAndExecuteTransaction({ transaction: tx });
@@ -173,9 +192,14 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
             toast.success("Completion approved! Reward transferred to assignee.");
         } catch (error) {
             console.error("Error approving completion:", error);
-            toast.error("Failed to approve completion", {
-                description: error instanceof Error ? error.message : "An unexpected error occurred",
-            });
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes("MoveAbort") && message.includes(" 9)")) {
+                toast.error("Only the task owner can approve", {
+                    description: "Switch to the owner wallet and retry approval.",
+                });
+            } else {
+                handleTransactionError(error, "Failed to approve completion");
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -188,7 +212,10 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
         const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
 
         if (!packageId || !versionObjectId) {
-            toast.error("Configuration error");
+            const missing = [];
+            if (!packageId) missing.push("NEXT_PUBLIC_PACKAGE_ID");
+            if (!versionObjectId) missing.push("NEXT_PUBLIC_VERSION_ID");
+            showConfigError(missing);
             return;
         }
 
@@ -213,7 +240,7 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
             toast.success("Task cancelled and all deposits refunded!");
         } catch (error) {
             console.error("Error cancelling task:", error);
-            toast.error("Failed to cancel task");
+            handleTransactionError(error, "Failed to cancel task");
         } finally {
             setIsProcessing(false);
         }
@@ -247,14 +274,14 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
                     </div>
                     <Button 
                         onClick={depositReward} 
-                        disabled={isProcessing || !depositAmount || taskStatus === 2}
+                        disabled={isProcessing || !depositAmount || taskStatus >= 2}
                         className="w-full"
                     >
                         {isProcessing ? "Depositing..." : "Deposit Reward"}
                     </Button>
-                    {taskStatus === 2 && (
+                    {taskStatus >= 2 && (
                         <Badge variant="secondary" className="w-full justify-center">
-                            Cannot deposit to completed task
+                            Cannot deposit to completed/approved task
                         </Badge>
                     )}
                 </CardContent>
@@ -303,11 +330,17 @@ export function TaskRewards({ taskId }: TaskRewardsProps) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {taskStatus !== 2 ? (
+                    {taskStatus === 3 && (
+                        <Badge variant="outline" className="w-full justify-center">
+                            Task already approved
+                        </Badge>
+                    )}
+                    {taskStatus !== 2 && taskStatus !== 3 && (
                         <Badge variant="secondary" className="w-full justify-center">
                             Task must be completed first
                         </Badge>
-                    ) : (
+                    )}
+                    {taskStatus === 2 && (
                         <Button 
                             onClick={approveCompletion} 
                             disabled={isProcessing}

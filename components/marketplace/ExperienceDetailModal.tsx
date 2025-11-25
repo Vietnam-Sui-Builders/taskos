@@ -15,13 +15,15 @@ export function ExperienceDetailModal({
   onClose,
 }: ExperienceDetailProps) {
   const [selectedLicense, setSelectedLicense] = useState<
-    'personal' | 'commercial' | 'ai_training'
+    'personal' | 'commercial' | 'exclusive' | 'subscription' | 'view_only'
   >('personal');
 
   const licensePrices = {
     personal: experience.price,
     commercial: experience.price * 1.5,
-    ai_training: experience.price * 2,
+    exclusive: experience.price * 3,
+    subscription: Math.max(experience.price * 0.5, 1),
+    view_only: Math.max(experience.price * 0.25, 1),
   };
 
   const licenseDescriptions = {
@@ -29,8 +31,12 @@ export function ExperienceDetailModal({
       'For personal use only. Cannot be shared or commercialized.',
     commercial:
       'Use in commercial projects and products. Team sharing allowed.',
-    ai_training:
-      'License for AI model training and dataset creation. Unlimited use.',
+    exclusive:
+      'Exclusive rights. Only one buyer gets access.',
+    subscription:
+      'Time-bound access with renewals controlled by SEAL policy.',
+    view_only:
+      'View-only access. No redistribution or derivatives.',
   };
 
   const priceInSUI = (licensePrices[selectedLicense] / 1e9).toFixed(3);
@@ -126,7 +132,7 @@ export function ExperienceDetailModal({
         <div className="license-section">
           <h2>📜 License Type</h2>
           <div className="license-options">
-            {(['personal', 'commercial', 'ai_training'] as const).map(
+            {(['personal', 'commercial', 'exclusive', 'subscription', 'view_only'] as const).map(
               (type) => (
                 <label key={type} className="license-option">
                   <input

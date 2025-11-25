@@ -12,12 +12,14 @@ import {
 } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { formatDueDate, getPriorityLabel, isOverdue } from "@/helpers";
-import { useSuiClientQuery } from "@mysten/dapp-kit";
+import { useSuiClientQuery, useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { Hash, Copy, ExternalLink, Eye, FileText, Loader2, User, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getWalrusBlob } from "@/utils/walrus";
 import { useSuiClient } from "@mysten/dapp-kit";
-import { ROLE_OWNER, ROLE_EDITOR, ROLE_VIEWER } from "@/types";
+import { ROLE_OWNER, ROLE_EDITOR, ROLE_VIEWER, STATUS_COMPLETED, STATUS_APPROVED } from "@/types";
+import { Transaction } from "@mysten/sui/transactions";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface TaskViewerProps {
     taskId: string;
@@ -30,7 +32,12 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
     const [sharedRoles, setSharedRoles] = useState<Array<{ address: string; role: number }>>([]);
     const [isLoadingRoles, setIsLoadingRoles] = useState(false);
     const [assignee, setAssignee] = useState<string | null>(null);
+    const [isApproving, setIsApproving] = useState(false);
+    const [experienceIdDf, setExperienceIdDf] = useState<string>("");
     const client = useSuiClient();
+    const account = useCurrentAccount();
+    const queryClient = useQueryClient();
+    const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
 
     // Fetch task from blockchain
     const { data: taskData, isLoading: isLoadingTask, isError } = useSuiClientQuery(
@@ -207,10 +214,23 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
     }
 
     const fields = taskData.data.content.fields as Record<string, unknown>;
+
+    const parseOptionString = (value: unknown): string => {
+        if (!value) return "";
+        if (typeof value === "string") return value;
+        if (Array.isArray(value)) return value[0] || "";
+        if (typeof value === "object" && "vec" in (value as any)) {
+            const vecVal = (value as any).vec;
+            if (Array.isArray(vecVal)) return vecVal[0] || "";
+        }
+        return "";
+    };
+
     const dueDate = fields.due_date as { vec: string[] } | undefined;
-    const contentBlobId = fields.content_blob_id as { vec: string[] } | undefined;
-    const resultBlobId = fields.result_blob_id as { vec: string[] } | undefined;
+    const contentBlobId = parseOptionString(fields.content_blob_id);
+    const resultBlobId = parseOptionString(fields.result_blob_id);
     const fileBlobIds = (fields.file_blob_ids as string[]) || [];
+    const experienceId = parseOptionString((fields as any).experience_id);
     const status = fields.status as number;
     const createdAt = fields.created_at as string;
     const updatedAt = fields.updated_at as string;
@@ -224,15 +244,16 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
         creator: String(fields.creator || ""),
         priority: Number(fields.priority || 1),
         status,
-        is_completed: status === 2, // STATUS_COMPLETED = 2
+        is_completed: status === 2 || status === 3, // completed or approved
         created_at: createdAt,
         updated_at: updatedAt,
         due_date: dueDate?.vec?.[0] || "0",
-        content_blob_id: contentBlobId?.vec?.[0] || "",
-        result_blob_id: resultBlobId?.vec?.[0] || "",
+        content_blob_id: contentBlobId,
+        result_blob_id: resultBlobId,
         file_blob_ids: fileBlobIds,
         category,
         tags,
+        experience_id: experienceId || experienceIdDf,
     };
 
     const priorityInfo = getPriorityLabel(task.priority);
@@ -243,12 +264,17 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
             case 0: return { label: "To Do", color: "bg-gray-500" };
             case 1: return { label: "In Progress", color: "bg-blue-500" };
             case 2: return { label: "Completed", color: "bg-green-500" };
-            case 3: return { label: "Archived", color: "bg-orange-500" };
+            case 3: return { label: "Approved", color: "bg-emerald-600" };
+            case 4: return { label: "Archived", color: "bg-orange-500" };
             default: return { label: "Unknown", color: "bg-gray-500" };
         }
     };
 
     const statusInfo = getStatusLabel(task.status);
+    const canApprove = task.status === STATUS_COMPLETED;
+    const hasContentBlob = !!task.content_blob_id;
+    const hasResultBlob = !!task.result_blob_id;
+    const mintReady = task.status === STATUS_APPROVED && (hasResultBlob || hasContentBlob);
 
     const copyToClipboard = async (text: string) => {
         try {
@@ -299,6 +325,90 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
         }
     };
 
+    // Fetch Experience ID stored as dynamic field (ExperienceMintKey)
+    useEffect(() => {
+        const fetchExperienceDf = async () => {
+            if (!taskId) return;
+            try {
+                const dfList = await client.getDynamicFields({ parentId: taskId });
+                const expField = dfList.data.find(
+                    (f) =>
+                        typeof f.name === "object" &&
+                        (f.name as any).type &&
+                        String((f.name as any).type).includes("ExperienceMintKey")
+                );
+                if (expField) {
+                    const dfObject = await client.getDynamicFieldObject({
+                        parentId: taskId,
+                        name: expField.name as any,
+                    });
+                    const value =
+                        dfObject.data?.content?.dataType === "moveObject"
+                            ? ((dfObject.data.content.fields as any).value as string)
+                            : undefined;
+                    if (value) {
+                        setExperienceIdDf(value);
+                    }
+                }
+            } catch (err) {
+                console.warn("Failed to fetch experience ID dynamic field", err);
+            }
+        };
+        fetchExperienceDf();
+    }, [client, taskId]);
+
+    const handleApproveStatus = async () => {
+        if (!taskId || !account) {
+            toast.error("Connect your wallet to approve");
+            return;
+        }
+        if (!canApprove) {
+            toast.error("Task must be completed before approval");
+            return;
+        }
+
+        const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+        const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
+        const taskRegistryId = process.env.NEXT_PUBLIC_TASKS_REGISTRY_ID;
+        const hasRegistry = !!taskRegistryId;
+
+        if (!packageId || !versionObjectId) {
+            toast.error("Configuration error");
+            return;
+        }
+
+        setIsApproving(true);
+        try {
+            const tx = new Transaction();
+            tx.moveCall({
+                target: `${packageId}::task_manage::approve_completion`,
+                arguments: hasRegistry
+                    ? [tx.object(versionObjectId), tx.object(taskId), tx.object(taskRegistryId!)]
+                    : [tx.object(versionObjectId), tx.object(taskId)],
+            });
+
+            const resp = await signAndExecuteTransaction({ transaction: tx });
+            await client.waitForTransaction({ digest: resp.digest });
+            await queryClient.invalidateQueries({ queryKey: ["testnet", "getObject"] });
+
+            toast.success("Task marked as APPROVED and payout sent");
+        } catch (error) {
+            console.error("Failed to approve task", error);
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes("MoveAbort") && message.includes(" 9)")) {
+                toast.error("Only the task owner can approve", {
+                    description: "Switch to the owner wallet and retry approval.",
+                });
+            } else {
+                toast.error("Failed to approve task", {
+                    description: error instanceof Error ? error.message : "Unknown error",
+                });
+            }
+        } finally {
+            setIsApproving(false);
+        }
+    };
+
     return (
         <>
         <Card
@@ -311,9 +421,17 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                 <div className="flex flex-col gap-3">
                     {/* Title and Priority */}
                     <div className="flex items-start gap-2 flex-wrap">
-                        <strong className="text-lg font-semibold flex-1">
-                            {task.title}
-                        </strong>
+                        <div className="flex-1 min-w-0 space-y-1">
+                            <strong className="text-lg font-semibold block truncate">
+                                {task.title}
+                            </strong>
+                            {task.experience_id && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span className="font-semibold text-gray-700 dark:text-gray-200">Experience ID:</span>
+                                    <code className="font-mono break-all">{task.experience_id}</code>
+                                </div>
+                            )}
+                        </div>
 
                         <Badge
                             className={`${priorityInfo.color} text-white`}
@@ -324,6 +442,17 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                         <Badge className={`${statusInfo.color} text-white`}>
                             {statusInfo.label}
                         </Badge>
+
+                        {canApprove && (
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={handleApproveStatus}
+                                disabled={isApproving}
+                            >
+                                {isApproving ? "Approving..." : "Mark Approved"}
+                            </Button>
+                        )}
 
                         {overdueStatus && (
                             <Badge className="bg-red-600 text-white">
@@ -336,6 +465,29 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                     <p className="text-sm text-muted-foreground">
                         {task.description}
                     </p>
+
+                    {/* Guided Workflow */}
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                        <div className="font-semibold mb-1">Workflow checklist</div>
+                        <ol className="list-decimal list-inside space-y-1">
+                            <li>Upload encrypted content in <strong>Content</strong> tab (optional but helps SEAL).</li>
+                            <li>Submit work with result blob in <strong>Submit</strong> tab.</li>
+                            <li>Owner clicks <strong>Approve</strong> when completed.</li>
+                            <li>Mint Experience NFT in <strong>Experience</strong> tab (needs content or result blob).</li>
+                            <li>List for sale with license/copy limits.</li>
+                        </ol>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {!hasResultBlob && (
+                                <Badge variant="outline">Pending: Submit result blob</Badge>
+                            )}
+                            {hasResultBlob && <Badge variant="secondary">Result blob ready</Badge>}
+                            {hasContentBlob && <Badge variant="secondary">Content blob ready</Badge>}
+                            {task.status === STATUS_COMPLETED && <Badge variant="secondary">Ready to approve</Badge>}
+                            {task.status === STATUS_APPROVED && (hasContentBlob || hasResultBlob) && (
+                                <Badge variant="default">Mint-ready</Badge>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Object ID Section - Enhanced */}
                     <div className="border rounded-lg p-3 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900">
