@@ -54,31 +54,66 @@ export default function SellerAllowlistPage() {
       setError("Set NEXT_PUBLIC_PACKAGE_ID to load policies");
       return;
     }
+    if (!packageId) {
+      setError("NEXT_PUBLIC_PACKAGE_ID is not configured");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const resp = await client.getOwnedObjects({
-        owner: SELLER_ADDRESS,
-        filter: { StructType: policyStruct },
-        options: { showContent: true },
+      // SEALPolicy objects are shared objects, so we need to query events to find them
+      // Query SEALPolicyCreated events to get policy IDs
+      const events = await client.queryEvents({
+        query: {
+          MoveEventType: `${packageId}::seal_integration::SEALPolicyCreated`,
+        },
+        limit: 50,
+        order: 'descending',
       });
 
+      console.log('SEALPolicyCreated events:', events);
+
       const baseItems: PolicyItem[] = [];
-      resp.data.forEach((obj) => {
-        const content: any = obj.data?.content;
-        if (content?.dataType !== "moveObject") return;
-        const fields = content.fields as Record<string, any>;
-        baseItems.push({
-          id: obj.data!.objectId,
-          sealPolicyId: fields.seal_policy_id as string,
-          walrusBlobId: fields.walrus_blob_id as string,
-          experienceId: fields.experience_id as string,
-          allowlist: (fields.allowlist as string[]) || [],
-          policyType: fields.policy_type as PolicyType,
-        });
-      });
+      
+      // Fetch each policy object and filter by owner
+      for (const event of events.data) {
+        try {
+          const eventData = event.parsedJson as Record<string, unknown>;
+          const policyId = eventData.policy_id as string;
+          
+          if (!policyId) continue;
+
+          // Fetch the policy object
+          const policyObj = await client.getObject({
+            id: policyId,
+            options: { showContent: true },
+          });
+
+          const content: any = policyObj.data?.content;
+          if (content?.dataType !== "moveObject") continue;
+          
+          const fields = content.fields as Record<string, any>;
+          
+          // Filter by owner (only show policies owned by SELLER_ADDRESS)
+          if (fields.owner?.toLowerCase() !== SELLER_ADDRESS.toLowerCase()) {
+            continue;
+          }
+
+          baseItems.push({
+            id: policyObj.data!.objectId,
+            sealPolicyId: fields.seal_policy_id as string,
+            walrusBlobId: fields.walrus_blob_id as string,
+            experienceId: fields.experience_id as string,
+            allowlist: (fields.allowlist as string[]) || [],
+            policyType: fields.policy_type as PolicyType,
+          });
+        } catch (err) {
+          console.warn('Error fetching policy:', err);
+          continue;
+        }
+      }
 
       // Fetch experience display name (if any)
       const withNames = await Promise.all(

@@ -35,7 +35,8 @@ const suiClient = new SuiClient({
 });
 
 // SEAL key server configuration
-const SEAL_KEY_SERVER = process.env.REACT_APP_SEAL_KEY_SERVER || 'https://seal.walrus.space';
+const SEAL_KEY_SERVER = process.env.NEXT_PUBLIC_SEAL_KEY_SERVER || process.env.REACT_APP_SEAL_KEY_SERVER;
+const ENABLE_MOCK_SEAL = process.env.NEXT_PUBLIC_ENABLE_MOCK_SEAL === 'true' || process.env.NODE_ENV === 'development';
 
 /**
  * Fetch SEAL policy from Sui for an experience asset
@@ -45,7 +46,7 @@ export async function getSEALPolicy(
   taskosPackageId: string
 ): Promise<SEALPolicy> {
   try {
-    // Query Sui RPC for SEALPolicy object
+    // Query Sui RPC for SEALPolicyCreated events
     const response = await suiClient.queryEvents({
       query: {
         // Filter for the SEALPolicyCreated move event in the provided package
@@ -64,26 +65,34 @@ export async function getSEALPolicy(
       throw new Error(`No SEAL policy found for experience ${experienceId}`);
     }
 
-    const policyJson = policyEvent.parsedJson as {
+    const eventData = policyEvent.parsedJson as {
       policy_id: string;
       experience_id: string;
       policy_type: 0 | 1 | 2;
-      owner: string;
-      walrus_blob_id: string;
-      seal_policy_id: string;
-      created_at: number;
-      allowlist?: string[];
-      subscription_product_id?: string;
     };
 
+    // Fetch the actual policy object to get the full data including allowlist
+    const policyObject = await suiClient.getObject({
+      id: eventData.policy_id,
+      options: { showContent: true },
+    });
+
+    if (!policyObject.data?.content || policyObject.data.content.dataType !== 'moveObject') {
+      throw new Error(`Failed to fetch policy object ${eventData.policy_id}`);
+    }
+
+    const fields = policyObject.data.content.fields as Record<string, any>;
+
     return {
-      id: policyJson.policy_id,
-      experience_id: policyJson.experience_id,
-      policy_type: policyJson.policy_type,
-      owner: policyJson.owner,
-      walrus_blob_id: policyJson.walrus_blob_id,
-      seal_policy_id: policyJson.seal_policy_id,
-      created_at: policyJson.created_at,
+      id: policyObject.data.objectId,
+      experience_id: fields.experience_id as string,
+      policy_type: fields.policy_type as 0 | 1 | 2,
+      owner: fields.owner as string,
+      walrus_blob_id: fields.walrus_blob_id as string,
+      seal_policy_id: fields.seal_policy_id as string,
+      created_at: Number(fields.created_at || 0),
+      allowlist: (fields.allowlist as string[]) || [],
+      subscription_product_id: fields.subscription_product_id as string,
     };
   } catch (error) {
     console.error('Failed to fetch SEAL policy:', error);
@@ -158,6 +167,38 @@ export async function requestDecryptionKey(
   wallet: any // Sui wallet object
 ): Promise<DecryptionKeyResponse> {
   try {
+    // Development/Mock mode - return mock key
+    if (ENABLE_MOCK_SEAL || !SEAL_KEY_SERVER) {
+      console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.warn('⚠️  MOCK MODE ENABLED - Using fake decryption keys');
+      console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.warn('');
+      console.warn('Mock keys CANNOT decrypt real encrypted data!');
+      console.warn('');
+      console.warn('To use real SEAL encryption:');
+      console.warn('  1. Set NEXT_PUBLIC_SEAL_KEY_SERVER=https://seal-testnet-2.walrus.space');
+      console.warn('  2. Set NEXT_PUBLIC_ENABLE_MOCK_SEAL=false');
+      console.warn('  3. Restart your dev server');
+      console.warn('');
+      console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // Generate deterministic mock key based on policy ID
+      const mockKey = Array.from({ length: 64 }, (_, i) => 
+        ((sealPolicyId.charCodeAt(i % sealPolicyId.length) + i) % 16).toString(16)
+      ).join('');
+      
+      const mockNonce = Array.from({ length: 48 }, (_, i) => 
+        ((userAddress.charCodeAt(i % userAddress.length) + i) % 16).toString(16)
+      ).join('');
+      
+      return {
+        key: mockKey,
+        nonce: mockNonce,
+        sessionId: 'mock-session',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+      };
+    }
+
     // 1. Prepare request message
     const requestMessage = {
       policy_id: sealPolicyId,
@@ -188,8 +229,15 @@ export async function requestDecryptionKey(
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`SEAL key server error: ${error.message}`);
+      const errorText = await response.text();
+      let errorMessage = 'SEAL key server error';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
     const keyResponse = await response.json();
@@ -204,6 +252,15 @@ export async function requestDecryptionKey(
     };
   } catch (error) {
     console.error('Failed to request decryption key:', error);
+    
+    // If SEAL server is unavailable, provide helpful error
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error(
+        `SEAL key server is not accessible at ${SEAL_KEY_SERVER}. ` +
+        `Please configure NEXT_PUBLIC_SEAL_KEY_SERVER or enable mock mode with NEXT_PUBLIC_ENABLE_MOCK_SEAL=true`
+      );
+    }
+    
     throw error;
   }
 }

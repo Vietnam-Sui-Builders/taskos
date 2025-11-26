@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSuiClient } from '@mysten/dapp-kit';
 import { Experience } from '@/components/marketplace/types';
+import { parseOptionString } from '@/lib/parseOptionString';
 
 export function useMarketplaceListings() {
   const client = useSuiClient();
@@ -12,8 +13,9 @@ export function useMarketplaceListings() {
 
   useEffect(() => {
     const fetchListings = async () => {
+      // Validate PACKAGE_ID before making RPC calls
       if (!taskosPackageId) {
-        setError('TASKOS_PACKAGE_ID is not configured');
+        setError('TASKOS_PACKAGE_ID is not configured. Please set NEXT_PUBLIC_PACKAGE_ID in your environment variables.');
         setIsLoading(false);
         return;
       }
@@ -22,41 +24,34 @@ export function useMarketplaceListings() {
         setIsLoading(true);
         setError(null);
 
-        // Query for ExperienceListed events
-        const events = await client.queryEvents({
-          query: {
-            MoveEventType: `${taskosPackageId}::marketplace::ExperienceListed`,
-          },
-          limit: 50,
-          order: 'descending',
-        });
+        // Query for ExperienceListed events with error handling
+        let events;
+        try {
+          events = await client.queryEvents({
+            query: {
+              MoveEventType: `${taskosPackageId}::marketplace::ExperienceListed`,
+            },
+            limit: 50,
+            order: 'descending',
+          });
+        } catch (rpcError: any) {
+          console.error('RPC error querying events:', rpcError);
+          throw new Error(`Failed to query blockchain events: ${rpcError.message || 'Network error'}`);
+        }
 
         console.log('Marketplace events:', events);
 
-        const parseOptionString = (value: any): string => {
-          if (!value) return '';
-          if (typeof value === 'string') return value;
-          if (Array.isArray(value)) return value[0] || '';
-          if (typeof value === 'object' && 'vec' in value) {
-            const vecVal = (value as any).vec;
-            if (Array.isArray(vecVal)) return vecVal[0] || '';
+        const parseDisplayField = (experienceObj: any, key: string): string => {
+          try {
+            return (
+              experienceObj?.data?.display?.data?.[key] ||
+              experienceObj?.data?.display?.data?.[`${key}#string`] ||
+              ''
+            );
+          } catch (err) {
+            console.warn(`Error parsing display field ${key}:`, err);
+            return '';
           }
-          if (typeof value === 'object' && 'fields' in value) {
-            const maybeSome = (value as any).fields?.some;
-            if (typeof maybeSome === 'string') return maybeSome;
-            if (typeof maybeSome === 'object' && maybeSome?.fields?.bytes) {
-              return maybeSome.fields.bytes;
-            }
-          }
-          return '';
-        };
-
-        const parseDisplayField = (experienceObj: any, key: string) => {
-          return (
-            experienceObj?.data?.display?.data?.[key] ||
-            experienceObj?.data?.display?.data?.[`${key}#string`] ||
-            ''
-          );
         };
 
         // Parse events to extract experience listings
@@ -64,35 +59,61 @@ export function useMarketplaceListings() {
 
         for (const event of events.data) {
           try {
+            // Safely parse event data with validation
             const eventData = event.parsedJson as Record<string, unknown>;
+            if (!eventData) {
+              console.warn('Event has no parsedJson data, skipping');
+              continue;
+            }
+
             const listingId = (eventData.listing_id as string) || '';
             const experienceId = (eventData.experience_id as string) || '';
-            if (!listingId || !experienceId) continue;
+            
+            if (!listingId || !experienceId) {
+              console.warn('Event missing required fields (listing_id or experience_id), skipping');
+              continue;
+            }
 
-            // Fetch listing for price/seller/copies
-            const listingObj = await client.getObject({
-              id: listingId,
-              options: { showContent: true },
-            });
+            // Fetch listing for price/seller/copies with error handling
+            let listingObj;
+            try {
+              listingObj = await client.getObject({
+                id: listingId,
+                options: { showContent: true },
+              });
+            } catch (objError: any) {
+              console.warn(`Failed to fetch listing ${listingId}:`, objError);
+              continue;
+            }
 
             const listingFields =
               listingObj.data?.content?.dataType === 'moveObject'
                 ? (listingObj.data.content.fields as Record<string, any>)
                 : null;
 
-            // Fetch experience for metadata
-            const experienceObj = await client.getObject({
-              id: experienceId,
-              options: { showContent: true },
-            });
+            // Fetch experience for metadata with error handling
+            let experienceObj;
+            try {
+              experienceObj = await client.getObject({
+                id: experienceId,
+                options: { showContent: true },
+              });
+            } catch (objError: any) {
+              console.warn(`Failed to fetch experience ${experienceId}:`, objError);
+              continue;
+            }
 
             const expFields =
               experienceObj.data?.content?.dataType === 'moveObject'
                 ? (experienceObj.data.content.fields as Record<string, any>)
                 : null;
 
-            if (!expFields || !listingFields) continue;
+            if (!expFields || !listingFields) {
+              console.warn('Missing fields in listing or experience object, skipping');
+              continue;
+            }
 
+            // Parse optional fields safely using helper function
             const ratingCount = Number(expFields.rating_count || 0);
             const totalRating = Number(expFields.total_rating || 0);
             const avgRating = ratingCount > 0 ? totalRating / ratingCount : 0;
@@ -121,16 +142,40 @@ export function useMarketplaceListings() {
             };
 
             experienceList.push(experience);
-          } catch (err) {
+          } catch (err: any) {
             console.warn('Error parsing experience event:', err);
+            // Continue processing other events
           }
         }
 
-        setExperiences(experienceList);
-      } catch (err) {
+        // Check if we should use mock data in development
+        if (experienceList.length === 0 && process.env.NODE_ENV === 'development') {
+          console.warn('No on-chain listings found. Using mock data for development.');
+          setExperiences(getMockExperiences());
+        } else {
+          setExperiences(experienceList);
+        }
+      } catch (err: any) {
         console.error('Error fetching marketplace listings:', err);
-        setError('Failed to load marketplace listings');
-        setExperiences([]);
+        
+        // Return specific error messages for different failure types
+        if (err.message?.includes('query blockchain events')) {
+          setError('Network error: Unable to connect to blockchain. Please check your connection and try again.');
+        } else if (err.message?.includes('PACKAGE_ID')) {
+          setError('Configuration error: TASKOS_PACKAGE_ID is not properly configured.');
+        } else if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+          setError('Network error: Unable to reach the blockchain node. Please try again later.');
+        } else {
+          setError(`Failed to load marketplace listings: ${err.message || 'Unknown error'}`);
+        }
+        
+        // Fallback to mock data in development if error occurs
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Error occurred. Using mock data for development.');
+          setExperiences(getMockExperiences());
+        } else {
+          setExperiences([]);
+        }
       } finally {
         setIsLoading(false);
       }

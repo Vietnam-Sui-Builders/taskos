@@ -1,0 +1,48 @@
+# Systemd service file for Purchase Event Listener
+# 
+# Installation:
+#   1. Copy this file to /etc/systemd/system/purchase-listener.service
+#   2. Update WorkingDirectory and Environment variables
+#   3. Run: sudo systemctl daemon-reload
+#   4. Run: sudo systemctl enable purchase-listener
+#   5. Run: sudo systemctl start purchase-listener
+#
+# Check status:
+#   sudo systemctl status purchase-listener
+#
+# View logs:
+#   sudo journalctl -u purchase-listener -f
+
+[Unit]
+Description=Taskos Purchase Event Listener
+After=network.target
+
+[Service]
+Type=simple
+User=taskos
+Group=taskos
+WorkingDirectory=/opt/taskos
+ExecStart=/usr/bin/node /opt/taskos/scripts/run-purchase-listener.ts
+Restart=always
+RestartSec=10
+
+# Environment variables
+Environment="NODE_ENV=production"
+Environment="ADMIN_PRIVATE_KEY=YOUR_ADMIN_PRIVATE_KEY_HERE"
+Environment="NEXT_PUBLIC_PACKAGE_ID=YOUR_PACKAGE_ID_HERE"
+Environment="SUI_NETWORK=testnet"
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/taskos/logs
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=purchase-listener
+
+[Install]
+WantedBy=multi-user.target

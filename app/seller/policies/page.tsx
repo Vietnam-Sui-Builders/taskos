@@ -37,7 +37,7 @@ export default function SellerPoliciesPage() {
       setPolicies([]);
       return;
     }
-    if (!policyStruct) {
+    if (!policyStruct || !packageId) {
       setError("Set NEXT_PUBLIC_PACKAGE_ID to query SEAL policies.");
       setPolicies([]);
       return;
@@ -46,26 +46,57 @@ export default function SellerPoliciesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const resp = await client.getOwnedObjects({
-        owner: account.address,
-        filter: { StructType: policyStruct },
-        options: { showContent: true },
+      // SEALPolicy objects are shared objects, so we need to query events to find them
+      // Query SEALPolicyCreated events to get policy IDs
+      const events = await client.queryEvents({
+        query: {
+          MoveEventType: `${packageId}::seal_integration::SEALPolicyCreated`,
+        },
+        limit: 50,
+        order: 'descending',
       });
 
+      console.log('SEALPolicyCreated events:', events);
+
       const items: PolicyItem[] = [];
-      resp.data.forEach((obj) => {
-        const content: any = obj.data?.content;
-        if (content?.dataType !== "moveObject") return;
-        const fields = content.fields as Record<string, any>;
-        items.push({
-          id: obj.data!.objectId,
-          sealPolicyId: fields.seal_policy_id as string,
-          walrusBlobId: fields.walrus_blob_id as string,
-          experienceId: fields.experience_id as string,
-          policyType: Number(fields.policy_type),
-          owner: account.address,
-        });
-      });
+      
+      // Fetch each policy object and filter by owner
+      for (const event of events.data) {
+        try {
+          const eventData = event.parsedJson as Record<string, unknown>;
+          const policyId = eventData.policy_id as string;
+          
+          if (!policyId) continue;
+
+          // Fetch the policy object
+          const policyObj = await client.getObject({
+            id: policyId,
+            options: { showContent: true },
+          });
+
+          const content: any = policyObj.data?.content;
+          if (content?.dataType !== "moveObject") continue;
+          
+          const fields = content.fields as Record<string, any>;
+          
+          // Filter by owner (only show policies owned by connected wallet)
+          if (fields.owner?.toLowerCase() !== account.address.toLowerCase()) {
+            continue;
+          }
+
+          items.push({
+            id: policyObj.data!.objectId,
+            sealPolicyId: fields.seal_policy_id as string,
+            walrusBlobId: fields.walrus_blob_id as string,
+            experienceId: fields.experience_id as string,
+            policyType: Number(fields.policy_type),
+            owner: fields.owner as string,
+          });
+        } catch (err) {
+          console.warn('Error fetching policy:', err);
+          continue;
+        }
+      }
 
       setPolicies(items);
     } catch (err) {

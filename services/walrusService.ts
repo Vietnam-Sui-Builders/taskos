@@ -21,6 +21,10 @@ const suiClient = new SuiClient({
   url: process.env.NEXT_PUBLIC_SUI_RPC_URL || getFullnodeUrl("testnet"),
 });
 
+// Walrus aggregator configuration
+const WALRUS_AGGREGATOR = process.env.NEXT_PUBLIC_WALRUS_AGGREGATOR;
+const WALRUS_PUBLISHER = process.env.NEXT_PUBLIC_WALRUS_PUBLISHER;
+
 let walrusClientPromise: Promise<WalrusClient> | null = null;
 
 async function getWalrusClient(): Promise<WalrusClient> {
@@ -30,11 +34,23 @@ async function getWalrusClient(): Promise<WalrusClient> {
 
   if (!walrusClientPromise) {
     walrusClientPromise = import("@mysten/walrus").then(
-      ({ WalrusClient }) =>
-        new WalrusClient({
+      ({ WalrusClient }) => {
+        const config: any = {
           network: "testnet",
           suiClient,
-        })
+        };
+
+        // Use custom aggregator if configured
+        if (WALRUS_AGGREGATOR) {
+          config.aggregator = WALRUS_AGGREGATOR;
+        }
+
+        if (WALRUS_PUBLISHER) {
+          config.publisher = WALRUS_PUBLISHER;
+        }
+
+        return new WalrusClient(config);
+      }
     );
   }
 
@@ -82,10 +98,37 @@ export async function decryptDataClient(
   nonce: Uint8Array,
   key: Uint8Array
 ): Promise<string> {
+  // Validate inputs
+  if (!encryptedData || encryptedData.length === 0) {
+    throw new Error('Decryption failed: encrypted data is empty');
+  }
+  
+  if (!key || key.length !== 32) {
+    throw new Error(`Decryption failed: invalid key length (expected 32, got ${key?.length || 0})`);
+  }
+  
+  if (!nonce || nonce.length !== 24) {
+    throw new Error(`Decryption failed: invalid nonce length (expected 24, got ${nonce?.length || 0})`);
+  }
+
+  console.log(`🔓 Decrypting ${encryptedData.length} bytes...`);
+  console.log(`   Key length: ${key.length}, Nonce length: ${nonce.length}`);
+
   const decrypted = crypto.secretbox.open(encryptedData, nonce, key);
 
   if (!decrypted) {
-    throw new Error('Decryption failed - key or nonce invalid');
+    console.error('❌ Decryption failed - possible causes:');
+    console.error('   1. Key/nonce mismatch (data encrypted with different keys)');
+    console.error('   2. Mock mode enabled but trying to decrypt real data');
+    console.error('   3. Corrupted encrypted data');
+    console.error('   4. Wrong SEAL policy or blob ID');
+    
+    throw new Error(
+      'Decryption failed - key or nonce invalid. ' +
+      'This usually means the data was encrypted with different keys than provided. ' +
+      'If using mock mode (NEXT_PUBLIC_ENABLE_MOCK_SEAL=true), you cannot decrypt real encrypted data. ' +
+      'Set NEXT_PUBLIC_ENABLE_MOCK_SEAL=false and configure NEXT_PUBLIC_SEAL_KEY_SERVER to use real SEAL.'
+    );
   }
 
   return new TextDecoder().decode(decrypted);
@@ -139,38 +182,72 @@ export async function downloadAndDecryptBlob(
 ): Promise<string> {
   let lastError: Error | null = null;
 
+  // Pre-decode encryption metadata (do this once, not in retry loop)
+  const encryptionKey = new Uint8Array(Buffer.from(encryptionKeyHex, 'hex'));
+  const nonce = new Uint8Array(Buffer.from(nonceHex, 'hex'));
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`Attempting to download blob ${blobId} (attempt ${attempt}/${retries})`);
+      console.log(`📥 Downloading blob ${blobId.substring(0, 8)}... (attempt ${attempt}/${retries})`);
+      const startTime = Date.now();
 
       // 1. Download encrypted blob from Walrus
       const client = await getWalrusClient();
       const encryptedData = await client.readBlob({ blobId });
+      
+      const downloadTime = Date.now() - startTime;
+      console.log(`✓ Downloaded in ${downloadTime}ms (${encryptedData.length} bytes)`);
 
-      // 2. Decode encryption metadata
-      const encryptionKey = new Uint8Array(Buffer.from(encryptionKeyHex, 'hex'));
-      const nonce = new Uint8Array(Buffer.from(nonceHex, 'hex'));
-
-      // 3. Decrypt on client
+      // 2. Decrypt on client (fast, local operation)
+      const decryptStartTime = Date.now();
       const decryptedText = await decryptDataClient(encryptedData, nonce, encryptionKey);
-
-      console.log(`✓ Blob decrypted successfully`);
+      
+      const decryptTime = Date.now() - decryptStartTime;
+      console.log(`✓ Decrypted in ${decryptTime}ms`);
+      console.log(`✅ Total time: ${downloadTime + decryptTime}ms`);
+      
       return decryptedText;
     } catch (error) {
       lastError = error as Error;
-      console.warn(
-        `Attempt ${attempt} failed: ${lastError.message}. Retrying in 2s...`
-      );
+      const errorMessage = lastError.message || String(error);
+      
+      // Check for SSL certificate errors
+      if (errorMessage.includes('ERR_CERT_AUTHORITY_INVALID') || 
+          errorMessage.includes('certificate') ||
+          errorMessage.includes('SSL')) {
+        console.error('❌ SSL Certificate Error: Walrus aggregator has invalid certificate');
+        throw new Error(
+          'Walrus storage is using a development server with an invalid SSL certificate. ' +
+          'This is a known issue with testnet. Please configure NEXT_PUBLIC_WALRUS_AGGREGATOR ' +
+          'with a valid aggregator URL, or contact the administrator.'
+        );
+      }
+      
+      console.warn(`❌ Attempt ${attempt} failed: ${errorMessage}`);
 
       if (attempt < retries) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Exponential backoff: 500ms, 1s, 2s
+        const delay = Math.min(500 * Math.pow(2, attempt - 1), 2000);
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
 
-  throw new Error(
-    `Failed to download and decrypt blob after ${retries} attempts: ${lastError?.message}`
-  );
+  // Provide helpful error message
+  let errorMsg = `Failed to download and decrypt blob after ${retries} attempts`;
+  if (lastError?.message) {
+    errorMsg += `: ${lastError.message}`;
+    
+    // Add helpful hints for common errors
+    if (lastError.message.includes('404') || lastError.message.includes('not found')) {
+      errorMsg += '\n\nThe blob may not exist or has expired. Please verify the blob ID.';
+    } else if (lastError.message.includes('network') || lastError.message.includes('fetch')) {
+      errorMsg += '\n\nNetwork error. Please check your internet connection and try again.';
+    }
+  }
+
+  throw new Error(errorMsg);
 }
 
 /**

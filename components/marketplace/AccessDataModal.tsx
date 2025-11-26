@@ -1,6 +1,7 @@
 // File: components/marketplace/AccessDataModal.tsx
 
 import React from 'react';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useExperienceAccess } from '../../hooks/useExperienceAccess';
 import { ErrorDisplay } from '../common/ErrorDisplay';
 import { Experience } from './types';
@@ -12,6 +13,7 @@ interface AccessDataProps {
 }
 
 export function AccessDataModal({ experience, onClose, onRequestAllowlist }: AccessDataProps) {
+  const currentAccount = useCurrentAccount();
   const taskosPackageId = process.env.NEXT_PUBLIC_PACKAGE_ID || '';
   const {
     loading,
@@ -20,6 +22,8 @@ export function AccessDataModal({ experience, onClose, onRequestAllowlist }: Acc
     data,
     expiresAt,
     refetch,
+    loadingStep,
+    progress,
   } = useExperienceAccess(experience.id, taskosPackageId);
   const [requestStatus, setRequestStatus] = React.useState<'idle' | 'sent' | 'error'>('idle');
 
@@ -51,10 +55,28 @@ export function AccessDataModal({ experience, onClose, onRequestAllowlist }: Acc
 
         {/* Loading State */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin shadow-[0_0_20px_rgba(var(--primary),0.3)]" />
-            <p className="font-mono text-primary/80 animate-pulse tracking-widest">DECRYPTING_DATA_STREAM...</p>
-            <small className="text-xs font-mono text-muted-foreground">DO_NOT_CLOSE_WINDOW</small>
+          <div className="flex flex-col items-center justify-center py-20 space-y-6">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin shadow-[0_0_20px_rgba(var(--primary),0.3)]" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-bold text-primary">{progress}%</span>
+              </div>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-full max-w-md space-y-2">
+              <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all duration-500 ease-out rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="font-mono text-sm text-primary/80 text-center tracking-wider">
+                {loadingStep || 'DECRYPTING_DATA_STREAM...'}
+              </p>
+            </div>
+            
+            <small className="text-xs font-mono text-muted-foreground animate-pulse">DO_NOT_CLOSE_WINDOW</small>
           </div>
         )}
 
@@ -71,9 +93,23 @@ export function AccessDataModal({ experience, onClose, onRequestAllowlist }: Acc
 
         {/* Access Denied */}
         {!loading && !canAccess && (
-          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-8 text-center">
+          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-8 text-center space-y-4">
             <h2 className="text-xl font-bold font-display text-destructive mb-2">🔒 ACCESS_DENIED</h2>
-            <p className="text-muted-foreground font-mono mb-6">You do not have the required permissions to access this data stream.</p>
+            <p className="text-muted-foreground font-mono mb-2">You do not have the required permissions to access this data stream.</p>
+            
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-left">
+              <p className="text-sm font-mono text-yellow-500 mb-2">⚠️ COMMON ISSUE:</p>
+              <p className="text-xs font-mono text-muted-foreground mb-2">
+                If you recently purchased this experience, the seller may need to manually add your wallet address to the SEAL policy allowlist.
+              </p>
+              <p className="text-xs font-mono text-muted-foreground">
+                Your wallet: <span className="text-foreground break-all">{currentAccount?.address || 'Not connected'}</span>
+              </p>
+              <p className="text-xs font-mono text-muted-foreground mt-2">
+                Seller: <span className="text-foreground break-all">{experience.seller}</span>
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 className="px-4 py-2 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-mono text-xs uppercase tracking-wider"
