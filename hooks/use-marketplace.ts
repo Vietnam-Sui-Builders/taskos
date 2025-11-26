@@ -4,7 +4,7 @@ import { Transaction } from '@mysten/sui/transactions';
 
 interface PurchaseExperienceParams {
   listingId: string;
-  paymentAmount: number;
+  paymentAmount: number | bigint;
 }
 
 type LicenseOption = 'personal' | 'commercial' | 'exclusive' | 'subscription' | 'view_only';
@@ -42,20 +42,37 @@ export function useMarketplace() {
       // 1. Get listing object to verify it exists
       const listingObject = await client.getObject({
         id: params.listingId,
-        options: { showContent: true },
+        options: { showContent: true, showOwner: true },
       });
 
       if (!listingObject.data) {
         throw new Error('Listing not found');
       }
 
-      // 2. Prepare payment (split coin if needed)
-      const [coin] = tx.splitCoins(tx.gas, [params.paymentAmount]);
+      const owner = listingObject.data.owner;
+      if (!owner || typeof owner !== 'object' || !('Shared' in owner)) {
+        throw new Error('Listing must be a shared object');
+      }
 
-      // 3. Call marketplace::purchase_experience
+      const listingSharedVersion = owner.Shared.initial_shared_version;
+      if (!listingSharedVersion) {
+        throw new Error('Missing listing shared object version');
+      }
+
+      // 2. Prepare payment (split coin if needed)
+      const [coin] = tx.splitCoins(tx.gas, [BigInt(params.paymentAmount)]);
+
+      // 3. Call marketplace::purchase_experience (contract transfers Purchase to buyer)
       tx.moveCall({
         target: `${taskosPackageId}::marketplace::purchase_experience`,
-        arguments: [tx.object(params.listingId), coin],
+        arguments: [
+          tx.sharedObjectRef({
+            objectId: params.listingId,
+            initialSharedVersion: BigInt(listingSharedVersion).toString(),
+            mutable: true,
+          }),
+          coin,
+        ],
       });
 
       // 5. Execute transaction
@@ -112,9 +129,9 @@ export function useMarketplace() {
         target: `${taskosPackageId}::marketplace::list_experience`,
         arguments: [
           tx.object(params.experienceId),
-          tx.pure.u64(params.price),
+          tx.pure.u64(BigInt(params.price)),
           tx.pure.u8(licenseValue),
-          tx.pure.u64(params.copies),
+          tx.pure.u64(BigInt(params.copies)),
         ],
       });
 

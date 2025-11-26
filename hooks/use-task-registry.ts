@@ -25,7 +25,16 @@ const convertToTaskItem = (taskObject: SuiObjectResponse): TaskItem | null => {
     const fields = taskObject.data.content.fields as Record<string, unknown>;
     const objectId = taskObject.data.objectId;
 
-    const dueDate = fields.due_date as { vec: string[] } | undefined;
+    const extractOptionValue = (value: unknown): string | undefined => {
+      if (!value || typeof value !== "object") return undefined;
+      const vecVal = (value as any).vec ?? (value as any).fields?.vec;
+      if (Array.isArray(vecVal) && vecVal.length > 0 && vecVal[0] != null) {
+        return String(vecVal[0]);
+      }
+      return undefined;
+    };
+
+    const dueDate = extractOptionValue(fields.due_date);
     const createdAt = fields.created_at as string;
     const status = fields.status as number;
     const assignee = fields.assignee as { vec: string[] } | undefined;
@@ -40,8 +49,8 @@ const convertToTaskItem = (taskObject: SuiObjectResponse): TaskItem | null => {
       creator: String(fields.creator || ""),
       is_completed: status === STATUS_COMPLETED || status === STATUS_APPROVED,
       created_at: new Date(parseInt(createdAt)).toISOString(),
-      due_date: dueDate?.vec?.[0]
-        ? new Date(parseInt(dueDate.vec[0])).toISOString()
+      due_date: dueDate
+        ? new Date(parseInt(dueDate)).toISOString()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       priority: String(fields.priority || 1),
       assignee: assignee?.vec?.[0] || undefined,

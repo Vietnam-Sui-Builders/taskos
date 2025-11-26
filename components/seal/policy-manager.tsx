@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { handleTransactionError } from "@/lib/errorHandling";
+import { CreateSealPolicyForm } from "./create-seal-policy-form";
 
 type PolicyType = 0 | 1 | 2;
 
@@ -41,11 +42,7 @@ export function SealPolicyManager() {
 
   const [policies, setPolicies] = useState<PolicyItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newExperienceId, setNewExperienceId] = useState("");
-  const [newPolicyType, setNewPolicyType] = useState<PolicyType>(0);
-  const [newWalrusBlobId, setNewWalrusBlobId] = useState("");
-  const [newSealPolicyId, setNewSealPolicyId] = useState("");
+
   const [allowlistInput, setAllowlistInput] = useState<Record<string, string>>({});
   const [subscriptionInput, setSubscriptionInput] = useState<Record<string, string>>({});
 
@@ -95,50 +92,7 @@ export function SealPolicyManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.address, policyStruct]);
 
-  const handleCreate = async () => {
-    if (!account) {
-      toast.error("Connect wallet to create policy");
-      return;
-    }
-    if (!packageId) {
-      toast.error("Package ID missing", { description: "Set NEXT_PUBLIC_PACKAGE_ID" });
-      return;
-    }
-    if (!newExperienceId.trim() || !newWalrusBlobId.trim() || !newSealPolicyId.trim()) {
-      toast.error("All fields are required", {
-        description: "Experience ID, Walrus blob ID, and SEAL policy ID are mandatory",
-      });
-      return;
-    }
 
-    setIsCreating(true);
-    try {
-      const tx = new Transaction();
-      tx.moveCall({
-        target: `${packageId}::seal_integration::create_seal_policy`,
-        arguments: [
-          tx.object(newExperienceId.trim()),
-          tx.pure.u8(newPolicyType),
-          tx.pure.string(newWalrusBlobId.trim()),
-          tx.pure.string(newSealPolicyId.trim()),
-        ],
-      });
-
-      const resp = await signAndExecuteTransaction({ transaction: tx });
-      await client.waitForTransaction({ digest: resp.digest });
-      toast.success("SEAL policy created", { description: newSealPolicyId });
-      setNewExperienceId("");
-      setNewWalrusBlobId("");
-      setNewSealPolicyId("");
-      setNewPolicyType(0);
-      loadPolicies();
-    } catch (error) {
-      console.error("Create policy failed", error);
-      handleTransactionError(error, "Failed to create SEAL policy");
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   const handleAddAllowlist = async (policyId: string) => {
     const addr = allowlistInput[policyId]?.trim();
@@ -221,45 +175,7 @@ export function SealPolicyManager() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create SEAL Policy</CardTitle>
-          <CardDescription>
-            Mint a policy and register it with your Walrus blob and SEAL policy ID. Supports Private, Allowlist, and Subscription patterns.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Experience ID</Label>
-            <Input value={newExperienceId} onChange={(e) => setNewExperienceId(e.target.value)} placeholder="0x..." />
-          </div>
-          <div className="space-y-2">
-            <Label>Policy Type</Label>
-            <select
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              value={newPolicyType}
-              onChange={(e) => setNewPolicyType(Number(e.target.value) as PolicyType)}
-            >
-              <option value={0}>Private</option>
-              <option value={1}>Allowlist</option>
-              <option value={2}>Subscription</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label>Walrus Blob ID</Label>
-            <Input value={newWalrusBlobId} onChange={(e) => setNewWalrusBlobId(e.target.value)} placeholder="blob_id" />
-          </div>
-          <div className="space-y-2">
-            <Label>SEAL Policy ID</Label>
-            <Input value={newSealPolicyId} onChange={(e) => setNewSealPolicyId(e.target.value)} placeholder="seal_policy_id" />
-          </div>
-          <div className="md:col-span-2 flex justify-end">
-            <Button onClick={handleCreate} disabled={isCreating} className="w-full md:w-auto">
-              {isCreating ? "Creating..." : "Create Policy"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <CreateSealPolicyForm onSuccess={loadPolicies} />
 
       <Card>
         <CardHeader>

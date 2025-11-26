@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "export-env": "node ./scripts/export-env.cjs"
+    "export-env": "node ./scripts/export-env.cjs",
+    "list:marketplace": "node --loader ts-node/esm ./scripts/list-marketplace-experiences.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

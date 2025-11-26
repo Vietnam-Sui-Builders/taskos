@@ -189,7 +189,7 @@ export default function TaskListPage() {
                       ) : (
                         <TasksList>
                           {walletTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} onSelect={handleSelect} />
+                            <TaskCard key={task.id} task={task} />
                           ))}
                         </TasksList>
                       )}
@@ -224,7 +224,6 @@ export default function TaskListPage() {
                               <TaskCard 
                                 key={task.id} 
                                 task={task} 
-                                onSelect={handleSelect}
                               />
                             ))}
                           </TasksList>
@@ -246,7 +245,7 @@ export default function TaskListPage() {
                       ) : (
                         <TasksList>
                           {allTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} onSelect={handleSelect} />
+                            <TaskCard key={task.id} task={task} />
                           ))}
                         </TasksList>
                       )}

@@ -56,6 +56,26 @@ const data = {
       icon: IconDatabase,
     },
     {
+      title: "Marketplace",
+      url: "/marketplace",
+      icon: IconSearch,
+    },
+    {
+      title: "Purchases",
+      url: "/purchases",
+      icon: IconReport,
+    },
+    {
+      title: "Seller Allowlist",
+      url: "/seller/allowlist",
+      icon: IconUsers,
+    },
+    {
+      title: "Seller Policies",
+      url: "/seller/policies",
+      icon: IconDatabase,
+    },
+    {
       title: "Seal",
       url: "/seal",
       icon: IconFileAi,

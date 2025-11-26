@@ -45,8 +45,10 @@ export function CheckoutModal({
       }
 
       // Execute purchase transaction on blockchain
+      const listingId = experience.listingId || experience.id;
+
       const purchaseId = await purchaseExperience({
-        listingId: experience.id,
+        listingId,
         paymentAmount: experience.price,
       });
 

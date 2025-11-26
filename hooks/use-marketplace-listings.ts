@@ -33,9 +33,6 @@ export function useMarketplaceListings() {
 
         console.log('Marketplace events:', events);
 
-        // Parse events to extract experience listings
-        const experienceList: Experience[] = [];
-
         const parseOptionString = (value: any): string => {
           if (!value) return '';
           if (typeof value === 'string') return value;
@@ -44,8 +41,26 @@ export function useMarketplaceListings() {
             const vecVal = (value as any).vec;
             if (Array.isArray(vecVal)) return vecVal[0] || '';
           }
+          if (typeof value === 'object' && 'fields' in value) {
+            const maybeSome = (value as any).fields?.some;
+            if (typeof maybeSome === 'string') return maybeSome;
+            if (typeof maybeSome === 'object' && maybeSome?.fields?.bytes) {
+              return maybeSome.fields.bytes;
+            }
+          }
           return '';
         };
+
+        const parseDisplayField = (experienceObj: any, key: string) => {
+          return (
+            experienceObj?.data?.display?.data?.[key] ||
+            experienceObj?.data?.display?.data?.[`${key}#string`] ||
+            ''
+          );
+        };
+
+        // Parse events to extract experience listings
+        const experienceList: Experience[] = [];
 
         for (const event of events.data) {
           try {
@@ -83,9 +98,14 @@ export function useMarketplaceListings() {
             const avgRating = ratingCount > 0 ? totalRating / ratingCount : 0;
             const walrusContent = parseOptionString(expFields.walrus_content_blob_id);
             const walrusResult = parseOptionString(expFields.walrus_result_blob_id);
+            const description =
+              parseDisplayField(experienceObj, 'description') ||
+              parseOptionString(expFields.description) ||
+              '';
 
             const experience: Experience = {
               id: experienceObj.data!.objectId,
+              listingId,
               skill: String(expFields.skill || 'Unknown Skill'),
               domain: String(expFields.domain || 'General'),
               difficulty: parseInt(String(expFields.difficulty || '3')),
@@ -97,6 +117,7 @@ export function useMarketplaceListings() {
               walrus_blob_id: walrusContent || walrusResult || '',
               seal_policy_id: String(expFields.seal_policy_id || ''),
               timeSpent: parseInt(String(expFields.time_spent || '3600')),
+              description,
             };
 
             experienceList.push(experience);
@@ -105,18 +126,11 @@ export function useMarketplaceListings() {
           }
         }
 
-        // If no events found, use mock data for demo
-        if (experienceList.length === 0) {
-          console.log('No marketplace listings found, using mock data');
-          setExperiences(getMockExperiences());
-        } else {
-          setExperiences(experienceList);
-        }
+        setExperiences(experienceList);
       } catch (err) {
         console.error('Error fetching marketplace listings:', err);
         setError('Failed to load marketplace listings');
-        // Use mock data on error
-        setExperiences(getMockExperiences());
+        setExperiences([]);
       } finally {
         setIsLoading(false);
       }

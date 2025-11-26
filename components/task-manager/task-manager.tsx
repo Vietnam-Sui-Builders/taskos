@@ -10,7 +10,6 @@ import { useTaskRegistry } from "@/hooks/use-task-registry";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 
 export const TaskManager = () => {
-  const [selectedTask, setSelectedTask] = useState<string>();
   const taskRegistryId = process.env.NEXT_PUBLIC_TASKS_REGISTRY_ID;
   const account = useCurrentAccount();
   
@@ -81,7 +80,6 @@ export const TaskManager = () => {
               <TaskCard
                 key={task.id}
                 task={task}
-                onSelect={setSelectedTask}
                 sharedRoles={rolesByTask[task.id]}
               />
             ))}
@@ -106,7 +104,6 @@ export const TaskManager = () => {
               <TaskCard
                 key={task.id}
                 task={task}
-                onSelect={setSelectedTask}
                 sharedRoles={rolesByTask[task.id]}
               />
             ))}
@@ -131,7 +128,6 @@ export const TaskManager = () => {
               <TaskCard
                 key={task.id}
                 task={task}
-                onSelect={setSelectedTask}
                 sharedRoles={rolesByTask[task.id]}
               />
             ))}
@@ -140,13 +136,6 @@ export const TaskManager = () => {
       </TabsContent>
 
       <TabsContent value="create"></TabsContent>
-
-      {selectedTask && (
-        <SelectedTask
-          selectedTask={selectedTask}
-          setSelectedTask={setSelectedTask}
-        />
-      )}
     </Tabs>
   );
 };

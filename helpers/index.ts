@@ -16,18 +16,24 @@ export const getPriorityLabel = (priority: number) => {
 
 // Helper function to format due date
 export const formatDueDate = (due_date: string) => {
-    if (due_date === "0") return "No due date";
-    // Due date is stored in milliseconds
-    const date = new Date(parseInt(due_date));
-    return date.toLocaleDateString();
+    if (!due_date || due_date === "0") return "No due date";
+    const parsedDate = parseDate(due_date);
+    return parsedDate ? parsedDate.toLocaleDateString() : "No due date";
 };
 
 // Helper function to check if task is overdue
 export const isOverdue = (due_date: string, is_completed: boolean) => {
-    if (due_date === "0" || is_completed) return false;
-    // Due date is stored in milliseconds
-    const dueTime = parseInt(due_date);
-    return Date.now() > dueTime;
+    if (!due_date || due_date === "0" || is_completed) return false;
+    const parsedDate = parseDate(due_date);
+    if (!parsedDate) return false;
+    return Date.now() > parsedDate.getTime();
+};
+
+const parseDate = (due_date: string) => {
+    const numeric = Number(due_date);
+    if (!Number.isNaN(numeric) && numeric > 0) return new Date(numeric);
+    const fallback = new Date(due_date);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
 };
 
 // Helper function to get status label

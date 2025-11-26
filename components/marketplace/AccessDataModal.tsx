@@ -8,9 +8,10 @@ import { Experience } from './types';
 interface AccessDataProps {
   experience: Experience;
   onClose: () => void;
+  onRequestAllowlist?: (experience: Experience) => Promise<void> | void;
 }
 
-export function AccessDataModal({ experience, onClose }: AccessDataProps) {
+export function AccessDataModal({ experience, onClose, onRequestAllowlist }: AccessDataProps) {
   const taskosPackageId = process.env.NEXT_PUBLIC_PACKAGE_ID || '';
   const {
     loading,
@@ -20,6 +21,19 @@ export function AccessDataModal({ experience, onClose }: AccessDataProps) {
     expiresAt,
     refetch,
   } = useExperienceAccess(experience.id, taskosPackageId);
+  const [requestStatus, setRequestStatus] = React.useState<'idle' | 'sent' | 'error'>('idle');
+
+  const handleRequestAccess = async () => {
+    try {
+      setRequestStatus('sent');
+      if (onRequestAllowlist) {
+        await onRequestAllowlist(experience);
+      }
+    } catch (err) {
+      console.error('Allowlist request failed:', err);
+      setRequestStatus('error');
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
@@ -60,9 +74,24 @@ export function AccessDataModal({ experience, onClose }: AccessDataProps) {
           <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-8 text-center">
             <h2 className="text-xl font-bold font-display text-destructive mb-2">🔒 ACCESS_DENIED</h2>
             <p className="text-muted-foreground font-mono mb-6">You do not have the required permissions to access this data stream.</p>
-            <button className="px-4 py-2 rounded-md border border-primary/20 text-primary hover:bg-primary/10 transition-colors font-mono text-xs uppercase tracking-wider" onClick={onClose}>
-              RETURN_TO_MARKETPLACE
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                className="px-4 py-2 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-mono text-xs uppercase tracking-wider"
+                onClick={handleRequestAccess}
+                disabled={requestStatus === 'sent'}
+              >
+                {requestStatus === 'sent' ? 'REQUEST_SENT' : 'REQUEST_ALLOWLIST'}
+              </button>
+              <button className="px-4 py-2 rounded-md border border-primary/20 text-primary hover:bg-primary/10 transition-colors font-mono text-xs uppercase tracking-wider" onClick={onClose}>
+                RETURN_TO_MARKETPLACE
+              </button>
+            </div>
+            {requestStatus === 'sent' && (
+              <p className="mt-4 text-xs font-mono text-primary">Request submitted. Seller/admin should add your wallet to the allowlist.</p>
+            )}
+            {requestStatus === 'error' && (
+              <p className="mt-4 text-xs font-mono text-destructive">Request failed. Try again or contact seller.</p>
+            )}
           </div>
         )}
 

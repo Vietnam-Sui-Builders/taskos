@@ -28,6 +28,7 @@ import { ROLE_OWNER, ROLE_EDITOR, ROLE_VIEWER, STATUS_COMPLETED, STATUS_APPROVED
 import { Transaction } from "@mysten/sui/transactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
 interface TaskViewerProps {
     taskId: string;
@@ -264,18 +265,25 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
 
     const fields = taskData.data.content.fields as Record<string, unknown>;
 
+    const extractOptionValue = (value: unknown): string | undefined => {
+        if (!value || typeof value !== "object") return undefined;
+        const vecVal = (value as any).vec ?? (value as any).fields?.vec;
+        if (Array.isArray(vecVal) && vecVal.length > 0 && vecVal[0] != null) {
+            return String(vecVal[0]);
+        }
+        return undefined;
+    };
+
     const parseOptionString = (value: unknown): string => {
         if (!value) return "";
         if (typeof value === "string") return value;
         if (Array.isArray(value)) return value[0] || "";
-        if (typeof value === "object" && "vec" in (value as any)) {
-            const vecVal = (value as any).vec;
-            if (Array.isArray(vecVal)) return vecVal[0] || "";
-        }
+        const extracted = extractOptionValue(value);
+        if (extracted !== undefined) return extracted;
         return "";
     };
 
-    const dueDate = fields.due_date as { vec: string[] } | undefined;
+    const dueDate = extractOptionValue(fields.due_date);
     const contentBlobId = parseOptionString(fields.content_blob_id);
     const resultBlobId = parseOptionString(fields.result_blob_id);
     const fileBlobIds = (fields.file_blob_ids as string[]) || [];
@@ -296,7 +304,7 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
         is_completed: status === 2 || status === 3, // completed or approved
         created_at: createdAt,
         updated_at: updatedAt,
-        due_date: dueDate?.vec?.[0] || "0",
+        due_date: dueDate || "0",
         content_blob_id: contentBlobId,
         result_blob_id: resultBlobId,
         file_blob_ids: fileBlobIds,
@@ -706,49 +714,55 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
 
                             {/* Status & Priority Badges */}
                             <div className="flex flex-wrap items-center gap-3">
-                                {/* Priority Selector */}
+                            {/* Priority Selector */}
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-mono">Priority</Label>
                                 <Select 
-                                    value={String(task.priority)} 
-                                    onValueChange={handleUpdatePriority}
-                                >
-                                    <SelectTrigger className={cn(
-                                        "h-9 border-0 font-medium text-xs uppercase tracking-wider px-3 min-w-[100px] transition-all hover:scale-105",
-                                        priorityInfo.color === "bg-red-500" && "bg-red-500/10 text-red-500 hover:bg-red-500/20",
-                                        priorityInfo.color === "bg-orange-500" && "bg-orange-500/10 text-orange-500 hover:bg-orange-500/20",
-                                        priorityInfo.color === "bg-blue-500" && "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
-                                        priorityInfo.color === "bg-green-500" && "bg-green-500/10 text-green-500 hover:bg-green-500/20",
-                                        priorityInfo.color === "bg-gray-500" && "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20"
-                                    )}>
-                                        <SelectValue>{priorityInfo.label}</SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="1">Low</SelectItem>
-                                        <SelectItem value="2">Medium</SelectItem>
-                                        <SelectItem value="3">High</SelectItem>
-                                        <SelectItem value="4">Critical</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                        value={String(task.priority)} 
+                                        onValueChange={handleUpdatePriority}
+                                    >
+                                        <SelectTrigger className={cn(
+                                            "h-9 border-0 font-medium text-xs uppercase tracking-wider px-3 min-w-[100px] transition-all hover:scale-105",
+                                            priorityInfo.color === "bg-red-500" && "bg-red-500/10 text-red-500 hover:bg-red-500/20",
+                                            priorityInfo.color === "bg-orange-500" && "bg-orange-500/10 text-orange-500 hover:bg-orange-500/20",
+                                            priorityInfo.color === "bg-blue-500" && "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
+                                            priorityInfo.color === "bg-green-500" && "bg-green-500/10 text-green-500 hover:bg-green-500/20",
+                                            priorityInfo.color === "bg-gray-500" && "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20"
+                                        )}>
+                                            <SelectValue>{priorityInfo.label}</SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="1">Low</SelectItem>
+                                            <SelectItem value="2">Medium</SelectItem>
+                                            <SelectItem value="3">High</SelectItem>
+                                            <SelectItem value="4">Critical</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
                                 {/* Status Selector */}
-                                <Select 
-                                    value={String(task.status)} 
-                                    onValueChange={handleUpdateStatus}
-                                    disabled={task.status === STATUS_COMPLETED || task.status === STATUS_APPROVED}
-                                >
-                                    <SelectTrigger className={cn(
-                                        "h-9 border-0 font-medium text-xs uppercase tracking-wider px-3 min-w-[120px] transition-all hover:scale-105",
-                                        statusInfo.color
-                                    )}>
-                                        <SelectValue>{statusInfo.label}</SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={String(STATUS_TODO)}>To Do</SelectItem>
-                                        <SelectItem value={String(STATUS_IN_PROGRESS)}>In Progress</SelectItem>
-                                        <SelectItem value={String(STATUS_COMPLETED)}>Completed</SelectItem>
-                                        <SelectItem value={String(STATUS_APPROVED)} disabled>Approved</SelectItem>
-                                        <SelectItem value={String(STATUS_ARCHIVED)}>Archived</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="flex flex-col gap-1">
+                                    <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-mono">Status</Label>
+                                    <Select 
+                                        value={String(task.status)} 
+                                        onValueChange={handleUpdateStatus}
+                                        disabled={task.status === STATUS_COMPLETED || task.status === STATUS_APPROVED}
+                                    >
+                                        <SelectTrigger className={cn(
+                                            "h-9 border-0 font-medium text-xs uppercase tracking-wider px-3 min-w-[120px] transition-all hover:scale-105",
+                                            statusInfo.color
+                                        )}>
+                                            <SelectValue>{statusInfo.label}</SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={String(STATUS_TODO)}>To Do</SelectItem>
+                                            <SelectItem value={String(STATUS_IN_PROGRESS)}>In Progress</SelectItem>
+                                            <SelectItem value={String(STATUS_COMPLETED)}>Completed</SelectItem>
+                                            <SelectItem value={String(STATUS_APPROVED)} disabled>Approved</SelectItem>
+                                            <SelectItem value={String(STATUS_ARCHIVED)}>Archived</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
                                 {canApprove && (
                                     <Button
@@ -780,6 +794,74 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                         </div>
                     </div>
 
+                    {/* --- Minted Experience NFT Section --- */}
+                    {task.experience_id && (
+                        <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-6 shadow-lg shadow-emerald-500/10">
+                            <div className="flex items-start justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                                        <Layers className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold font-display text-emerald-500 flex items-center gap-2">
+                                            Experience NFT Minted
+                                            <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-[10px]">
+                                                LIVE
+                                            </Badge>
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground font-mono">
+                                            This task has been converted to a tradeable Experience NFT
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 bg-background/50 rounded-lg p-3 border border-emerald-500/20">
+                                    <Hash className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                                    <code className="text-xs font-mono text-foreground flex-1 break-all">
+                                        {task.experience_id}
+                                    </code>
+                                    <div className="flex gap-1 flex-shrink-0">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 hover:bg-emerald-500/10 hover:text-emerald-500"
+                                            onClick={() => copyToClipboard(task.experience_id)}
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 hover:bg-emerald-500/10 hover:text-emerald-500"
+                                            asChild
+                                        >
+                                            <a
+                                                href={`https://suiscan.xyz/testnet/object/${task.experience_id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            </a>
+                                        </Button>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2 pt-2">
+                                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                                        <FileCode className="h-3 w-3 mr-1" />
+                                        Blockchain Verified
+                                    </Badge>
+                                    <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">
+                                        <Shield className="h-3 w-3 mr-1" />
+                                        SEAL Protected
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* --- Workflow Checklist --- */}
                     <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-700 dark:text-blue-300">
                         <div className="flex items-center gap-2 font-semibold mb-2">
@@ -797,8 +879,14 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                             {hasResultBlob && <Badge variant="secondary" className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20">Work Submitted</Badge>}
                             {hasContentBlob && <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-500/20">Content Uploaded</Badge>}
                             {task.status === STATUS_COMPLETED && <Badge variant="secondary" className="bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 border-purple-500/20">Ready for Approval</Badge>}
-                            {task.status === STATUS_APPROVED && (hasContentBlob || hasResultBlob) && (
+                            {task.status === STATUS_APPROVED && (hasContentBlob || hasResultBlob) && !task.experience_id && (
                                 <Badge variant="default" className="bg-gradient-to-r from-amber-500 to-orange-500 border-0">Mint Ready</Badge>
+                            )}
+                            {task.experience_id && (
+                                <Badge variant="default" className="bg-gradient-to-r from-emerald-500 to-teal-500 border-0">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Experience Minted
+                                </Badge>
                             )}
                         </div>
                     </div>

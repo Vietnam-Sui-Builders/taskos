@@ -547,8 +547,17 @@ public fun update_status(
 ) {
     version::check_is_valid(version);
     let sender = tx_context::sender(ctx);
-    assert!(has_permission(task, sender, ROLE_EDITOR), EInsufficientPermission);
     validate_status(status);
+
+    // Allow editors/owners to change any status, but permit the assignee to move
+    // a task from TODO to IN_PROGRESS to start work.
+    let has_editor_permission = has_permission(task, sender, ROLE_EDITOR);
+    let assignee_starting_task =
+        status == STATUS_IN_PROGRESS &&
+        task.status == STATUS_TODO &&
+        get_assignee(task) == sender;
+
+    assert!(has_editor_permission || assignee_starting_task, EInsufficientPermission);
 
     let old_status = task.status;
     let task_id = object::id(task);

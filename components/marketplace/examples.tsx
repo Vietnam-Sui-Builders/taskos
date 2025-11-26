@@ -3,6 +3,7 @@
 import { useMarketplace } from '@/hooks/use-marketplace';
 import { useMarketplaceListings } from '@/hooks/use-marketplace-listings';
 import { useExperienceAccess } from '@/hooks/useExperienceAccess';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 
 /**
  * Example 1: List your completed task as an experience
@@ -67,6 +68,7 @@ export function DashboardMarketplace() {
  */
 export function QuickPurchaseButton({ listingId, price }: { listingId: string; price: number }) {
   const { purchaseExperience, isProcessing } = useMarketplace();
+  const currentAccount = useCurrentAccount();
 
   const handleQuickBuy = async () => {
     const confirmed = window.confirm(
@@ -74,6 +76,11 @@ export function QuickPurchaseButton({ listingId, price }: { listingId: string; p
     );
     
     if (!confirmed) return;
+
+    if (!currentAccount) {
+      alert('Please connect your wallet first.');
+      return;
+    }
 
     try {
       const purchaseId = await purchaseExperience({

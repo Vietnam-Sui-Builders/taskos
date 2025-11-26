@@ -43,6 +43,7 @@ export function ExperienceDetailModal({
 
   const handleProceedCheckout = () => {
     onProceedCheckout({
+      id: experience.listingId || experience.id,
       experienceId: experience.id,
       licenseType: selectedLicense,
       price: licensePrices[selectedLicense],
@@ -103,11 +104,9 @@ export function ExperienceDetailModal({
           <h2 className="text-lg font-bold font-display tracking-wide text-foreground flex items-center gap-2">
             <span className="text-primary">📋</span> DESCRIPTION
           </h2>
-          <p className="text-muted-foreground leading-relaxed font-mono text-sm">
-            Professional backend API design documentation including architecture
-            diagrams, code patterns, and deployment strategies for high-traffic
-            payment processing systems. Includes best practices for security,
-            scalability, and reliability.
+          <p className="text-muted-foreground leading-relaxed font-mono text-sm whitespace-pre-line">
+            {experience.description?.trim() ||
+              'On-chain experience minted on Sui. Seller has not provided a description yet.'}
           </p>
         </div>
 

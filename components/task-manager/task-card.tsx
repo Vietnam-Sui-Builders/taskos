@@ -11,10 +11,10 @@ import { format } from "date-fns";
 import { TaskItem } from "@/types";
 import { getPriorityLabel } from "@/helpers";
 import { Badge as RoleBadge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
 
 interface TaskCardProps {
     task: TaskItem;
-    onSelect: (id: string) => void;
     sharedRoles?: Array<{ address: string; role: number }>;
 }
 
@@ -25,7 +25,8 @@ const shortenAddress = (address: string, chars = 6): string => {
     return `${address.slice(0, chars)}...${address.slice(-chars)}`;
 };
 
-export const TaskCard = ({ task, onSelect, sharedRoles }: TaskCardProps) => {
+export const TaskCard = ({ task, sharedRoles }: TaskCardProps) => {
+    const router = useRouter();
     const priorityInfo = getPriorityLabel(Number(task.priority));
     
     // Check for content and files - handle both array and object formats
@@ -36,7 +37,7 @@ export const TaskCard = ({ task, onSelect, sharedRoles }: TaskCardProps) => {
     return (
         <Card
             className="py-4 cursor-pointer hover:shadow-[0_0_20px_rgba(var(--primary),0.2)] transition-all hover:scale-[1.02] animate-fade-in glass border-primary/20 bg-card/40 backdrop-blur-md h-full group relative overflow-hidden"
-            onClick={() => onSelect(task.id)}
+            onClick={() => router.push(`/task/${task.id}`)}
         >
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="flex flex-col justify-between h-full relative z-10">

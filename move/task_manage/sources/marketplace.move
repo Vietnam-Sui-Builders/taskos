@@ -4,8 +4,11 @@
 
 module task_manage::marketplace {
     use sui::coin::Coin;
-    use sui::sui::SUI;
     use sui::event;
+    use sui::object;
+    use sui::sui::SUI;
+    use sui::transfer;
+    use sui::tx_context;
 
     /// Listing struct - represents an experience data for sale
     public struct Listing has key, store {
@@ -88,7 +91,7 @@ module task_manage::marketplace {
         listing: &mut Listing,
         payment: Coin<SUI>,
         ctx: &mut TxContext,
-    ): Purchase {
+    ) {
         assert!(payment.balance().value() >= listing.price, 1); // insufficient payment
         assert!(listing.sold_copies < listing.available_copies, 2); // sold out
 
@@ -103,12 +106,13 @@ module task_manage::marketplace {
             purchase_timestamp: tx_context::epoch(ctx),
             seal_access_granted: false, // will be set by backend
         };
+        let purchase_id = object::id(&purchase);
 
         // Update listing
         listing.sold_copies = listing.sold_copies + 1;
 
         event::emit(ExperiencePurchased {
-            purchase_id: object::id(&purchase),
+            purchase_id,
             experience_id: listing.experience_id,
             buyer,
             seller: listing.seller,
@@ -118,8 +122,8 @@ module task_manage::marketplace {
         // Transfer payment to seller (simplified; real escrow would be more complex)
         transfer::public_transfer(payment, listing.seller);
 
-        // Return purchase record to caller (buyer) for further handling
-        purchase
+        // Transfer purchase record to buyer to avoid unused value errors
+        transfer::public_transfer(purchase, buyer);
     }
 
     /// Update listing status (by seller)

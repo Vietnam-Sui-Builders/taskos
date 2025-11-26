@@ -1,7 +1,8 @@
 // File: components/marketplace/types.ts
 
 export interface Experience {
-  id: string;
+  id: string; // Experience object id
+  listingId?: string;
   skill: string;
   domain: string;
   difficulty: number;
@@ -13,6 +14,7 @@ export interface Experience {
   walrus_blob_id: string;
   seal_policy_id: string;
   timeSpent?: number;
+  description?: string;
 }
 
 export interface PurchaseListing {

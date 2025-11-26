@@ -257,6 +257,69 @@ fun test_update_status() {
 }
 
 #[test]
+fun test_assignee_can_start_task() {
+    let mut scenario = ts::begin(CREATOR);
+
+    // Create system objects including Clock
+    ts::create_system_objects(&mut scenario);
+
+    // Initialize version and registry
+    ts::next_tx(&mut scenario, CREATOR);
+    {
+        let ctx = ts::ctx(&mut scenario);
+        init_version(ctx);
+        init_task_registry(ctx);
+    };
+
+    let _task_id = create_simple_task(&mut scenario, CREATOR);
+
+    // Set USER_B as assignee (no editor role granted)
+    ts::next_tx(&mut scenario, CREATOR);
+    {
+        let mut task = ts::take_from_sender<Task>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
+        let clock = ts::take_shared<Clock>(&scenario);
+        let ctx = ts::ctx(&mut scenario);
+
+        task_manage::set_assignee(&version, &mut task, USER_B, &clock, ctx);
+
+        ts::return_shared(version);
+        ts::return_shared(clock);
+        sui::transfer::public_transfer(task, CREATOR);
+    };
+
+    // Assignee moves task from TODO to IN_PROGRESS
+    ts::next_tx(&mut scenario, USER_B);
+    {
+        let mut task = ts::take_from_address<Task>(&scenario, CREATOR);
+        let mut registry = ts::take_shared<TaskRegistry>(&scenario);
+        let clock = ts::take_shared<Clock>(&scenario);
+        let version = ts::take_shared<Version>(&scenario);
+        let ctx = ts::ctx(&mut scenario);
+
+        task_manage::update_status(
+            &version,
+            &mut task,
+            status_in_progress(),
+            &clock,
+            &mut registry,
+            ctx,
+        );
+
+        assert!(task_manage::get_status(&task) == status_in_progress(), 0);
+        assert!(task_manage::get_task_count_by_status(&registry, status_todo()) == 0, 1);
+        assert!(task_manage::get_task_count_by_status(&registry, status_in_progress()) == 1, 2);
+
+        ts::return_shared(version);
+        ts::return_shared(registry);
+        ts::return_shared(clock);
+        ts::return_to_sender(&scenario, task);
+    };
+
+    ts::end(scenario);
+}
+
+#[test]
 fun test_add_and_remove_tag() {
     let mut scenario = ts::begin(CREATOR);
 
