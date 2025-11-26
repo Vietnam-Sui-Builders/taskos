@@ -48,28 +48,33 @@ export async function getSEALPolicy(
     // Query Sui RPC for SEALPolicy object
     const response = await suiClient.queryEvents({
       query: {
-        All: [
-          {
-            MoveEvent: {
-              module: 'seal_integration',
-              eventType: 'SEALPolicyCreated',
-            },
-          },
-        ],
+        // Filter for the SEALPolicyCreated move event in the provided package
+        MoveEventType: `${taskosPackageId}::seal_integration::SEALPolicyCreated`,
       },
       limit: 100,
     });
 
     // Find matching policy event
-    const policyEvent = response.data.find(
-      (event: SuiEvent) => event.parsedJson?.experience_id === experienceId
-    );
+    const policyEvent = response.data.find((event: SuiEvent) => {
+      const parsed = event.parsedJson as { experience_id?: string } | undefined;
+      return parsed?.experience_id === experienceId;
+    });
 
     if (!policyEvent) {
       throw new Error(`No SEAL policy found for experience ${experienceId}`);
     }
 
-    const policyJson = policyEvent.parsedJson as any;
+    const policyJson = policyEvent.parsedJson as {
+      policy_id: string;
+      experience_id: string;
+      policy_type: 0 | 1 | 2;
+      owner: string;
+      walrus_blob_id: string;
+      seal_policy_id: string;
+      created_at: number;
+      allowlist?: string[];
+      subscription_product_id?: string;
+    };
 
     return {
       id: policyJson.policy_id,

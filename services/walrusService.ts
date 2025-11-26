@@ -1,10 +1,9 @@
 // File: frontend/src/services/walrusService.ts
 // Purpose: Upload encrypted data to Walrus, retrieve and decrypt
 
-import { WalrusClient } from "@mysten/walrus";
+import type { WalrusClient } from "@mysten/walrus";
 import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
 import * as crypto from "tweetnacl";
-import { Box } from "tweetnacl";
 
 interface WalrusUploadResult {
   blobId: string;
@@ -22,10 +21,25 @@ const suiClient = new SuiClient({
   url: process.env.NEXT_PUBLIC_SUI_RPC_URL || getFullnodeUrl("testnet"),
 });
 
-const walrusClient = new WalrusClient({
-  network: "testnet",
-  suiClient,
-});
+let walrusClientPromise: Promise<WalrusClient> | null = null;
+
+async function getWalrusClient(): Promise<WalrusClient> {
+  if (typeof window === "undefined") {
+    throw new Error("Walrus client is only available in the browser");
+  }
+
+  if (!walrusClientPromise) {
+    walrusClientPromise = import("@mysten/walrus").then(
+      ({ WalrusClient }) =>
+        new WalrusClient({
+          network: "testnet",
+          suiClient,
+        })
+    );
+  }
+
+  return walrusClientPromise;
+}
 
 /**
  * Encrypt data on client-side using symmetric encryption (NaCl Secret Box)
@@ -130,7 +144,8 @@ export async function downloadAndDecryptBlob(
       console.log(`Attempting to download blob ${blobId} (attempt ${attempt}/${retries})`);
 
       // 1. Download encrypted blob from Walrus
-      const encryptedData = await walrusClient.readBlob({ blobId });
+      const client = await getWalrusClient();
+      const encryptedData = await client.readBlob({ blobId });
 
       // 2. Decode encryption metadata
       const encryptionKey = new Uint8Array(Buffer.from(encryptionKeyHex, 'hex'));
@@ -175,8 +190,9 @@ export async function downloadMultipleBlobs(
       );
       results.set(blob.id, decrypted);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error(`Failed to fetch blob ${blob.id}:`, error);
-      results.set(blob.id, `ERROR: ${error.message}`);
+      results.set(blob.id, `ERROR: ${message}`);
     }
   }
 

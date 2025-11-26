@@ -75,7 +75,7 @@ export function useExperienceAccess(
           policy.seal_policy_id,
           currentAccount!.address,
           {
-            signPersonalMessage: (msg) =>
+            signPersonalMessage: (msg: { message: Uint8Array }) =>
               signPersonalMessage({ message: msg.message }),
           }
         );

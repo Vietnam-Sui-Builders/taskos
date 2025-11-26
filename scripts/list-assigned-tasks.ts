@@ -103,7 +103,13 @@ async function listAssignedTasks(assigneeAddress: string) {
         const dynamicFields = await client.getDynamicFields({ parentId: taskId });
 
         for (const df of dynamicFields.data) {
-          const dfType = typeof df.name === "string" ? df.name : (df.name as Record<string, unknown>)?.type || "";
+          // DynamicFieldName can be a string or object; safely pull out a string type key if present
+          const dfType =
+            typeof df.name === "string"
+              ? df.name
+              : typeof (df.name as { type?: unknown }).type === "string"
+                ? (df.name as { type: string }).type
+                : "";
           
           if (typeof dfType === "string" && dfType.includes("AssigneeKey")) {
             try {

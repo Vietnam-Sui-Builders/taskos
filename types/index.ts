@@ -41,6 +41,7 @@ export interface TaskItem {
     assignee?: string;
     content_blob_id?: string;
     file_blob_ids?: string[];
+    access_control_table_id?: string;
 }
 
 export interface SharedTaskItem {
