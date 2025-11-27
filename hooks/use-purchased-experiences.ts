@@ -116,7 +116,7 @@ export function usePurchasedExperiences(ownerAddress?: string) {
           results.push({
             purchaseId: purchaseObj.objectId,
             buyer: String(fields.buyer || wallet),
-            seller: String(fields.seller || ''),
+            seller: String(fields.seller || expFields.creator || ''),
             pricePaid: Number(fields.price_paid || 0),
             licenseType: Number(fields.license_type || 0),
             purchasedAt: Number(fields.purchase_timestamp || 0),
@@ -126,7 +126,6 @@ export function usePurchasedExperiences(ownerAddress?: string) {
             difficulty: parseInt(String(expFields.difficulty || '3')),
             quality_score: parseInt(String(expFields.quality_score || '80')),
             price: Number(expFields.price || 0),
-            seller: String(expFields.creator || ''),
             rating: avgRating,
             soldCount: parseInt(String(expFields.sold_count || '0')),
             walrus_blob_id: walrusContent || walrusResult || '',

@@ -20,7 +20,7 @@ import {
 import { useState, useEffect } from "react";
 import { formatDueDate, getPriorityLabel, isOverdue } from "@/helpers";
 import { useSuiClientQuery, useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
-import { Hash, Copy, ExternalLink, Eye, FileText, Loader2, User, CheckCircle, Pencil, Check, X, Calendar, Tag, Folder, Plus, Clock, AlertTriangle, Shield, Layers, FileCode, Info } from "lucide-react";
+import { Hash, Copy, ExternalLink, Eye, FileText, Loader2, User, CheckCircle, Pencil, Check, X, Calendar, Tag, Folder, Plus, Clock, AlertTriangle, Shield, Layers, FileCode, Info, Play } from "lucide-react";
 import { toast } from "sonner";
 import { getWalrusBlob } from "@/utils/walrus";
 import { useSuiClient } from "@mysten/dapp-kit";
@@ -42,6 +42,7 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
     const [isLoadingRoles, setIsLoadingRoles] = useState(false);
     const [assignee, setAssignee] = useState<string | null>(null);
     const [isApproving, setIsApproving] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
     const [experienceIdDf, setExperienceIdDf] = useState<string>("");
     
     // Inline Edit States
@@ -329,6 +330,8 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
 
     const statusInfo = getStatusLabel(task.status);
     const canApprove = task.status === STATUS_COMPLETED;
+    const isAssignee = account?.address && assignee && account.address.toLowerCase() === assignee.toLowerCase();
+    const canStart = isAssignee && task.status === STATUS_TODO;
     const hasContentBlob = !!task.content_blob_id;
     const hasResultBlob = !!task.result_blob_id;
 
@@ -620,6 +623,54 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
         }
     };
 
+    const handleStartTask = async () => {
+        if (!taskId || !account) {
+            toast.error("Connect your wallet to start task");
+            return;
+        }
+        if (!canStart) {
+            toast.error("Only the assignee can start the task");
+            return;
+        }
+
+        const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+        const versionObjectId = process.env.NEXT_PUBLIC_VERSION_ID;
+        const taskRegistryId = process.env.NEXT_PUBLIC_TASKS_REGISTRY_ID;
+
+        if (!packageId || !versionObjectId || !taskRegistryId) {
+            toast.error("Configuration error");
+            return;
+        }
+
+        setIsStarting(true);
+        try {
+            const tx = new Transaction();
+            tx.moveCall({
+                target: `${packageId}::task_manage::update_status`,
+                arguments: [
+                    tx.object(versionObjectId),
+                    tx.object(taskId),
+                    tx.pure.u8(STATUS_IN_PROGRESS),
+                    tx.object("0x6"),
+                    tx.object(taskRegistryId),
+                ],
+            });
+
+            const resp = await signAndExecuteTransaction({ transaction: tx });
+            await client.waitForTransaction({ digest: resp.digest });
+            await queryClient.invalidateQueries({ queryKey: ["testnet", "getObject"] });
+
+            toast.success("Task started! Status updated to In Progress.");
+        } catch (error) {
+            console.error("Failed to start task", error);
+            toast.error("Failed to start task", {
+                description: error instanceof Error ? error.message : "Unknown error",
+            });
+        } finally {
+            setIsStarting(false);
+        }
+    };
+
     const copyToClipboard = async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -789,6 +840,27 @@ export function TaskViewer({ taskId }: TaskViewerProps) {
                                     <Badge variant="destructive" className="h-9 px-3 uppercase tracking-wider animate-pulse">
                                         Overdue
                                     </Badge>
+                                )}
+
+                                {canStart && (
+                                    <Button
+                                        size="sm"
+                                        onClick={handleStartTask}
+                                        disabled={isStarting}
+                                        className="h-9 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg shadow-blue-500/20 border-0"
+                                    >
+                                        {isStarting ? (
+                                            <>
+                                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                                Starting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Play className="h-3 w-3 mr-2 fill-current" />
+                                                Start Task
+                                            </>
+                                        )}
+                                    </Button>
                                 )}
                             </div>
                         </div>

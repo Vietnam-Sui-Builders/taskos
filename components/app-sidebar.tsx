@@ -51,55 +51,68 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "Walrus",
-      url: "/walrus",
-      icon: IconDatabase,
+      title: "My Tasks",
+      url: "/task/list",
+      icon: IconListDetails,
     },
+  ],
+  navMarketplace: [
     {
       title: "Marketplace",
       url: "/marketplace",
       icon: IconSearch,
     },
     {
-      title: "Purchases",
+      title: "My Purchases",
       url: "/purchases",
       icon: IconReport,
     },
+  ],
+  navExperiences: [
     {
-      title: "Seller Allowlist",
+      title: "My Experiences",
+      url: "/experience/my-experiences",
+      icon: IconFolder,
+    },
+    {
+      title: "Experience List",
+      url: "/experience/list",
+      icon: IconListDetails,
+    },
+    {
+      title: "Create SEAL Policy",
+      url: "/experience/create-seal-policy",
+      icon: IconFileAi,
+    },
+  ],
+  navSeller: [
+    {
+      title: "Manage Allowlist",
       url: "/seller/allowlist",
       icon: IconUsers,
     },
     {
-      title: "Seller Policies",
+      title: "View Policies",
       url: "/seller/policies",
+      icon: IconFileDescription,
+    },
+  ],
+  navStorage: [
+    {
+      title: "Walrus Storage",
+      url: "/walrus",
       icon: IconDatabase,
     },
     {
-      title: "Seal",
+      title: "SEAL Encryption",
       url: "/seal",
       icon: IconFileAi,
     },
     {
-      title: "My Tasks",
-      url: "/task/list",
-      icon: IconListDetails,
+      title: "SEAL Policies",
+      url: "/seal/policies",
+      icon: IconFileDescription,
     },
-    // {
-    //   title: "Analytics",
-    //   url: "#",
-    //   icon: IconChartBar,
-    // },
-    // {
-    //   title: "Projects",
-    //   url: "#",
-    //   icon: IconFolder,
-    // },
-    // {
-    //   title: "Team",
-    //   url: "#",
-    //   icon: IconUsers,
-    // },
   ],
   // navClouds: [
   //   {
@@ -209,9 +222,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="px-2 w-full">
           <CreateTask />
         </div>
-        <NavMain items={data.navMain} />
-        {/* <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
+        
+        {/* Main Navigation */}
+        <div className="space-y-1">
+          <div className="px-3 py-1.5">
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Main</p>
+          </div>
+          <NavMain items={data.navMain} />
+        </div>
+
+        {/* Marketplace */}
+        <div className="space-y-1">
+          <div className="px-3 py-1.5">
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Marketplace</p>
+          </div>
+          <NavMain items={data.navMarketplace} />
+        </div>
+
+        {/* Experiences */}
+        <div className="space-y-1">
+          <div className="px-3 py-1.5">
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Experiences</p>
+          </div>
+          <NavMain items={data.navExperiences} />
+        </div>
+
+        {/* Seller Tools */}
+        <div className="space-y-1">
+          <div className="px-3 py-1.5">
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Seller</p>
+          </div>
+          <NavMain items={data.navSeller} />
+        </div>
+
+        {/* Storage & Security */}
+        <div className="space-y-1">
+          <div className="px-3 py-1.5">
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Storage</p>
+          </div>
+          <NavMain items={data.navStorage} />
+        </div>
       </SidebarContent>
       <SidebarFooter className="border-t border-primary/10 pt-4 pb-4 bg-sidebar/50">
         <CustomBtn />
