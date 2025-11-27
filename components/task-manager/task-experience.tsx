@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useCurrentAccount,
   useSignAndExecuteTransaction,
@@ -67,6 +67,8 @@ export function TaskExperience({ taskId }: TaskExperienceProps) {
   const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
   const [policyInput, setPolicyInput] = useState("");
   const [savedPolicies, setSavedPolicies] = useState<string[]>([]);
+  const [ownedExperiences, setOwnedExperiences] = useState<Array<{ id: string; skill: string; domain: string }>>([]);
+  const [isLoadingExperiences, setIsLoadingExperiences] = useState(false);
 
   const account = useCurrentAccount();
   const suiClient = useSuiClient();
@@ -103,6 +105,117 @@ export function TaskExperience({ taskId }: TaskExperienceProps) {
   const resultBlob = parseOptionString(fields?.result_blob_id);
   const hasBlobForPolicy = !!(resultBlob || contentBlob);
 
+  // Fetch user's owned Experience NFTs
+  const fetchOwnedExperiences = async () => {
+    if (!account?.address) {
+      console.log("No account address, clearing experiences");
+      setOwnedExperiences([]);
+      return;
+    }
+
+    const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+    if (!packageId) {
+      console.error("NEXT_PUBLIC_PACKAGE_ID not set");
+      return;
+    }
+
+    console.log("Fetching experiences for account:", account.address);
+    console.log("Using package ID:", packageId);
+
+    setIsLoadingExperiences(true);
+    try {
+      // Query for ExperienceMinted events from this creator
+      const events = await suiClient.queryEvents({
+        query: {
+          MoveEventType: `${packageId}::experience::ExperienceMinted`,
+        },
+        limit: 100,
+        order: "descending",
+      });
+
+      console.log("Fetched ExperienceMinted events:", events);
+
+      const myExperiences: Array<{ id: string; skill: string; domain: string }> = [];
+
+      for (const event of events.data) {
+        try {
+          const eventData = event.parsedJson as Record<string, unknown>;
+          const creator = eventData.creator as string;
+
+          // Filter by creator address
+          if (creator?.toLowerCase() !== account.address.toLowerCase()) {
+            continue;
+          }
+
+          const experienceId = eventData.experience_id as string;
+          if (!experienceId) continue;
+
+          console.log("Found experience for this creator:", experienceId);
+
+          // Fetch experience object to verify ownership and get details
+          const experienceObj = await suiClient.getObject({
+            id: experienceId,
+            options: { showContent: true, showOwner: true },
+          });
+
+          console.log("Experience object:", experienceObj);
+
+          // Check ownership
+          const owner = experienceObj.data?.owner;
+          console.log("Owner structure:", owner);
+          
+          let isOwned = false;
+          if (owner && typeof owner === "object") {
+            if ("AddressOwner" in owner) {
+              isOwned = (owner as any).AddressOwner?.toLowerCase() === account.address.toLowerCase();
+              console.log("AddressOwner check:", isOwned);
+            } else if ("ObjectOwner" in owner) {
+              // NFT might be owned by another object, still consider it as owned by creator
+              console.log("ObjectOwner detected, treating as owned");
+              isOwned = true;
+            } else if ("Shared" in owner) {
+              // Shared object, still consider it as owned by creator
+              console.log("Shared object detected, treating as owned");
+              isOwned = true;
+            }
+          }
+
+          if (!isOwned) {
+            console.log("Experience not owned by user anymore, skipping");
+            continue;
+          }
+
+          const expFields =
+            experienceObj.data?.content?.dataType === "moveObject"
+              ? (experienceObj.data.content.fields as Record<string, any>)
+              : null;
+
+          if (!expFields) continue;
+
+          myExperiences.push({
+            id: experienceObj.data!.objectId,
+            skill: String(expFields.skill || "Unknown"),
+            domain: String(expFields.domain || "General"),
+          });
+        } catch (err) {
+          console.warn("Error processing experience:", err);
+        }
+      }
+
+      console.log("Processed experiences:", myExperiences);
+      setOwnedExperiences(myExperiences);
+
+      if (myExperiences.length > 0) {
+        toast.success(`Found ${myExperiences.length} Experience NFT${myExperiences.length > 1 ? "s" : ""}`);
+      }
+    } catch (error) {
+      console.error("Failed to fetch owned experiences:", error);
+      toast.error("Failed to load your Experience NFTs");
+    } finally {
+      setIsLoadingExperiences(false);
+    }
+  };
+
   // Load saved policy IDs from localStorage (auto-select the last used)
   useMemo(() => {
     if (typeof window === "undefined") return;
@@ -115,6 +228,16 @@ export function TaskExperience({ taskId }: TaskExperienceProps) {
       }
     }
   }, []);
+
+  // Fetch owned experiences when account changes
+  useEffect(() => {
+    if (account?.address) {
+      fetchOwnedExperiences();
+    } else {
+      setOwnedExperiences([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.address]);
 
   const persistPolicies = (policies: string[]) => {
     setSavedPolicies(policies);
@@ -333,7 +456,7 @@ export function TaskExperience({ taskId }: TaskExperienceProps) {
     }
     const experienceToList = experienceId.trim();
     if (!experienceToList) {
-      toast.error("Mint (or paste) an experience ID first");
+      toast.error("Select an Experience NFT to list");
       return;
     }
     const priceInMist = Math.round(parseFloat(listPriceSui || "0") * 1_000_000_000);
@@ -534,12 +657,40 @@ export function TaskExperience({ taskId }: TaskExperienceProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <Label>Experience ID</Label>
-            <Input
-              value={experienceId}
-              onChange={(e) => setExperienceId(e.target.value)}
-              placeholder="Paste experience object ID"
-            />
+            <Label className="flex items-center justify-between">
+              <span>Experience NFT</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchOwnedExperiences}
+                disabled={isLoadingExperiences}
+              >
+                {isLoadingExperiences ? "Loading..." : "↻ Refresh"}
+              </Button>
+            </Label>
+            {isLoadingExperiences ? (
+              <div className="flex items-center gap-2 w-full rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                Loading your Experience NFTs...
+              </div>
+            ) : ownedExperiences.length > 0 ? (
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={experienceId}
+                onChange={(e) => setExperienceId(e.target.value)}
+              >
+                <option value="">Select an Experience NFT</option>
+                {ownedExperiences.map((exp) => (
+                  <option key={exp.id} value={exp.id}>
+                    {exp.skill} ({exp.domain}) - {exp.id.slice(0, 8)}...
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                No Experience NFTs found. Mint an experience first or connect the wallet that owns them.
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-2">

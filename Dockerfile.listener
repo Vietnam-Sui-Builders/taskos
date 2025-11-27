@@ -1,0 +1,26 @@
+# Dockerfile for Purchase Event Listener Service
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build TypeScript
+RUN pnpm build
+
+# Expose health check port (optional)
+EXPOSE 3001
+
+# Run the listener
+CMD ["node", "scripts/run-purchase-listener.ts"]

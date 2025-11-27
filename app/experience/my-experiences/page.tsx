@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AccessDataModal } from "@/components/marketplace";
+import { ReencryptModal } from "@/components/marketplace/ReencryptModal";
 import { Experience } from "@/components/marketplace/types";
 
 const SELLER_ADDRESS = "0x34113ecfcf1c0547879eb474818f2433292221926f3776597354124150ab7989";
@@ -17,6 +18,7 @@ export default function MyExperiencesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
+  const [reencryptExperience, setReencryptExperience] = useState<Experience | null>(null);
 
   const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
 
@@ -264,21 +266,29 @@ export default function MyExperiencesPage() {
                     </p>
                   )}
 
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="flex flex-col gap-2 pt-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="flex-1 px-3 py-2 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-mono text-xs uppercase tracking-wider"
+                        onClick={() => setSelectedExperience(experience)}
+                      >
+                        View Data
+                      </button>
+                      <button
+                        className="px-3 py-2 rounded-md border border-primary/20 text-primary hover:bg-primary/10 transition-colors font-mono text-xs uppercase tracking-wider"
+                        onClick={() => {
+                          navigator.clipboard.writeText(experience.id);
+                          alert('Experience ID copied!');
+                        }}
+                      >
+                        📋
+                      </button>
+                    </div>
                     <button
-                      className="flex-1 px-3 py-2 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors font-mono text-xs uppercase tracking-wider"
-                      onClick={() => setSelectedExperience(experience)}
+                      className="w-full px-3 py-2 rounded-md border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-colors font-mono text-xs uppercase tracking-wider"
+                      onClick={() => setReencryptExperience(experience)}
                     >
-                      View Data
-                    </button>
-                    <button
-                      className="px-3 py-2 rounded-md border border-primary/20 text-primary hover:bg-primary/10 transition-colors font-mono text-xs uppercase tracking-wider"
-                      onClick={() => {
-                        navigator.clipboard.writeText(experience.id);
-                        alert('Experience ID copied!');
-                      }}
-                    >
-                      📋
+                      🔄 Re-encrypt Data
                     </button>
                   </div>
 
@@ -303,6 +313,13 @@ export default function MyExperiencesPage() {
         <AccessDataModal
           experience={selectedExperience}
           onClose={() => setSelectedExperience(null)}
+        />
+      )}
+
+      {reencryptExperience && (
+        <ReencryptModal
+          experience={reencryptExperience}
+          onClose={() => setReencryptExperience(null)}
         />
       )}
     </SidebarProvider>
