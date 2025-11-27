@@ -105,7 +105,7 @@ export function generateSampleExperienceData(experienceId: string) {
  * Returns a Blob that can be uploaded
  */
 export function prepareForWalrusUpload(encryptedData: Uint8Array): Blob {
-  return new Blob([encryptedData], { type: 'application/octet-stream' });
+  return new Blob([encryptedData.buffer as ArrayBuffer], { type: 'application/octet-stream' });
 }
 
 /**

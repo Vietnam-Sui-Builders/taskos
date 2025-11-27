@@ -119,7 +119,7 @@ export function ReencryptModal({ experience, onClose }: ReencryptModalProps) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Generate a deterministic blob ID based on the data
-      const hash = await crypto.subtle.digest('SHA-256', encryptedData);
+      const hash = await crypto.subtle.digest('SHA-256', encryptedData.buffer as ArrayBuffer);
       const hashArray = Array.from(new Uint8Array(hash));
       const blobId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 43);
       
